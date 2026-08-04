@@ -1,0 +1,30 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "NhaWOW Web (Chrome) - VR Flutter trực tiếp",
+      "request": "launch",
+      "type": "dart",
+      "deviceId": "chrome",
+      "toolArgs": [
+        "--dart-define=NHAWOW_API_BASE_URL=https://localhost:44323/mobile-api"
+      ]
+    },
+    {
+      "name": "NhaWOW Mobile (Android/iOS đã chọn)",
+      "request": "launch",
+      "type": "dart",
+      "toolArgs": [
+        "--dart-define=NHAWOW_API_BASE_URL=${input:nhawowApiBaseUrl}"
+      ]
+    }
+  ],
+  "inputs": [
+    {
+      "id": "nhawowApiBaseUrl",
+      "type": "promptString",
+      "description": "URL Mobile API mà điện thoại truy cập được",
+      "default": "https://nhawow.com/mobile-api"
+    }
+  ]
+}
