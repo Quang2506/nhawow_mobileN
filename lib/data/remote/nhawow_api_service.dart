@@ -633,6 +633,21 @@ class NhaWowApiService {
         .toList(growable: false);
   }
 
+  Future<AgentProfileModel> fetchAgentProfile(
+    int agentId, {
+    required String language,
+    int page = 1,
+    int pageSize = 50,
+  }) async {
+    final uri = AppConfig.buildApiUri('/agents/$agentId', {
+      'lang': language,
+      'page': page.toString(),
+      'pageSize': pageSize.toString(),
+    });
+    final root = await _getEnvelope(uri);
+    return AgentProfileModel.fromJson(_asMap(root['data']));
+  }
+
   Future<PropertyModel> fetchPropertyDetail(
     int id, {
     required String language,

@@ -362,6 +362,45 @@ class AppStore extends ChangeNotifier {
     }
   }
 
+  Future<AgentProfileModel> loadAgentProfile(
+    int agentId, {
+    AgentModel? fallbackAgent,
+  }) async {
+    if (agentId <= 0) {
+      throw const ApiTransportException('Hồ sơ người đăng không hợp lệ.');
+    }
+
+    if (_usingMockData) {
+      final items = _properties
+          .where((item) => item.owner.id == agentId)
+          .toList(growable: false);
+      final resolvedAgent = items.isNotEmpty
+          ? items.first.owner
+          : (fallbackAgent ?? currentUser);
+      final totalViews = items.fold<int>(0, (sum, item) => sum + item.viewCount);
+      final mainCity = items
+          .map((item) => item.city.trim())
+          .firstWhere((item) => item.isNotEmpty, orElse: () => 'Đang cập nhật');
+      return AgentProfileModel(
+        agent: resolvedAgent,
+        totalPublishedListings: resolvedAgent.verifiedListingCount > 0
+            ? resolvedAgent.verifiedListingCount
+            : items.length,
+        totalViewCount: totalViews,
+        mainCity: mainCity,
+        isOwnProfile: isLoggedIn && currentUser.id == agentId,
+        properties: items,
+        totalItems: items.length,
+      );
+    }
+
+    return _api.fetchAgentProfile(
+      agentId,
+      language: apiLanguageCode,
+      pageSize: 50,
+    );
+  }
+
   void setSelectedTab(int index) {
     if (_selectedTab == index) return;
     _selectedTab = index;
@@ -793,6 +832,54 @@ class AppStore extends ChangeNotifier {
     if (loaded != null) return loaded;
     final finalIndex = indexWhereConversation(conversationId);
     if (finalIndex >= 0) return _conversations[finalIndex];
+    throw const ApiTransportException('Không thể tải hội thoại vừa tạo.');
+  }
+
+  Future<ConversationModel> startAgentConversation(int agentId) async {
+    if (!isLoggedIn) {
+      throw const ApiTransportException(
+        'Vui lòng đăng nhập để nhắn tin.',
+        code: 'AUTH_REQUIRED',
+        data: <String, dynamic>{'needLogin': true},
+      );
+    }
+    if (agentId <= 0) {
+      throw const ApiTransportException('Hồ sơ người đăng không hợp lệ.');
+    }
+
+    final conversationId = await _api.startChatConversation(
+      agentId: agentId,
+      language: apiLanguageCode,
+    );
+    if (conversationId <= 0) {
+      throw const ApiTransportException('Không thể tạo hội thoại.');
+    }
+
+    await refreshConversations(force: true);
+    var index = _conversations.indexWhere((item) => item.id == conversationId);
+    if (index < 0) {
+      final matchedProperties = _properties
+          .where((item) => item.owner.id == agentId)
+          .toList(growable: false);
+      final owner = matchedProperties.isEmpty ? null : matchedProperties.first.owner;
+      _conversations.insert(
+        0,
+        ConversationModel(
+          id: conversationId,
+          title: owner?.name ?? 'Tin nhắn',
+          subtitle: owner?.roleLabel ?? '',
+          avatarUrl: owner?.avatarUrl ?? '',
+          messages: const <ChatMessageModel>[],
+        ),
+      );
+      index = 0;
+    }
+
+    final loaded = await loadConversationMessages(conversationId);
+    if (loaded != null) return loaded;
+    final finalIndex = indexWhereConversation(conversationId);
+    if (finalIndex >= 0) return _conversations[finalIndex];
+    if (index >= 0 && index < _conversations.length) return _conversations[index];
     throw const ApiTransportException('Không thể tải hội thoại vừa tạo.');
   }
 

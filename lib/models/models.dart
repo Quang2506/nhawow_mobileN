@@ -837,6 +837,28 @@ class AgentModel {
     return 'Môi giới Lv$level';
   }
 
+  int get normalizedLevel => level < 1 ? 1 : (level > 6 ? 6 : level);
+
+  String get levelIcon {
+    if (!isBroker) return '';
+    const icons = <String>['🏠', '⭐', '🛡️', '🏆', '💎', '👑'];
+    return icons[normalizedLevel - 1];
+  }
+
+  String get levelTitle => isBroker ? 'Lv$normalizedLevel' : '';
+
+  String get cleanLevelName {
+    var value = displayLevelName.trim();
+    const icons = <String>['🏠', '⭐', '🛡️', '🏆', '💎', '👑', '🥇', '🥈'];
+    for (final icon in icons) {
+      if (value.startsWith(icon)) {
+        value = value.substring(icon.length).trimLeft();
+        break;
+      }
+    }
+    return value.isEmpty ? roleLabel : value;
+  }
+
   factory AgentModel.fromJson(Map<String, dynamic> json) {
     int toInt(Object? value) {
       if (value is num) return value.toInt();
@@ -862,6 +884,63 @@ class AgentModel {
       isBroker: toBool(json['isBroker']),
       isGoldAgent: toBool(json['isGoldAgent']),
       avatarUrl: MediaUrlResolver.resolve((json['avatarUrl'] ?? '').toString()),
+    );
+  }
+}
+
+
+class AgentProfileModel {
+  const AgentProfileModel({
+    required this.agent,
+    required this.totalPublishedListings,
+    required this.totalViewCount,
+    required this.mainCity,
+    required this.isOwnProfile,
+    required this.properties,
+    this.totalItems = 0,
+  });
+
+  final AgentModel agent;
+  final int totalPublishedListings;
+  final int totalViewCount;
+  final String mainCity;
+  final bool isOwnProfile;
+  final List<PropertyModel> properties;
+  final int totalItems;
+
+  factory AgentProfileModel.fromJson(Map<String, dynamic> json) {
+    int toInt(Object? value) {
+      if (value is num) return value.toInt();
+      return int.tryParse(value?.toString() ?? '') ?? 0;
+    }
+
+    bool toBool(Object? value) {
+      if (value is bool) return value;
+      final normalized = value?.toString().trim().toLowerCase();
+      return normalized == 'true' || normalized == '1';
+    }
+
+    final rawAgent = json['agent'];
+    final agentMap = rawAgent is Map
+        ? Map<String, dynamic>.from(rawAgent)
+        : const <String, dynamic>{};
+    final rawItems = json['items'];
+    final items = rawItems is List
+        ? rawItems
+            .whereType<Map>()
+            .map((item) => PropertyModel.fromJson(Map<String, dynamic>.from(item)))
+            .where((item) => item.id > 0)
+            .toList(growable: false)
+        : const <PropertyModel>[];
+
+    return AgentProfileModel(
+      agent: AgentModel.fromJson(agentMap),
+      totalPublishedListings: toInt(json['totalPublishedListings']),
+      totalViewCount: toInt(json['totalViewCount']),
+      mainCity: (json['mainCity'] ?? '').toString().trim(),
+      isOwnProfile: toBool(json['isOwnProfile']),
+      properties: items,
+      totalItems: toInt(json['totalItems']),
     );
   }
 }

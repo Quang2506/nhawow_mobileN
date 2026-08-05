@@ -5,6 +5,7 @@ import 'package:latlong2/latlong.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../app/app_store.dart';
+import '../core/agent_level_ui.dart';
 import '../core/app_assets.dart';
 import '../core/app_image.dart';
 import '../core/app_theme.dart';
@@ -2490,7 +2491,7 @@ class _OwnerCard extends StatelessWidget {
                             ),
                           ),
                           const SizedBox(height: 6),
-                          _AgentLevelBadge(owner: owner),
+                          AgentLevelBadge(agent: owner, compact: true),
                           if (property.updatedAgoText.trim().isNotEmpty) ...[
                             const SizedBox(height: 6),
                             Row(
@@ -2566,44 +2567,6 @@ class _OwnerCard extends StatelessWidget {
   }
 }
 
-class _AgentLevelBadge extends StatelessWidget {
-  const _AgentLevelBadge({required this.owner});
-
-  final AgentModel owner;
-
-  @override
-  Widget build(BuildContext context) {
-    final color = _parseHexColor(owner.levelColor, const Color(0xFF64748B));
-    return Align(
-      alignment: Alignment.centerLeft,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
-        decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.08),
-          borderRadius: BorderRadius.circular(3),
-          border: Border.all(color: color, width: 1.5),
-        ),
-        child: Text(
-          owner.displayLevelName,
-          style: TextStyle(
-            color: color,
-            fontSize: 11.5,
-            height: 1,
-            fontWeight: FontWeight.w900,
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-Color _parseHexColor(String value, Color fallback) {
-  final normalized = value.trim().replaceFirst('#', '');
-  if (normalized.length != 6) return fallback;
-  final parsed = int.tryParse(normalized, radix: 16);
-  return parsed == null ? fallback : Color(0xFF000000 | parsed);
-}
-
 class _ContactBar extends StatelessWidget {
   const _ContactBar({required this.property});
 
@@ -2664,7 +2627,7 @@ class _ContactBar extends StatelessWidget {
                               ),
                             ),
                             const SizedBox(height: 5),
-                            _AgentLevelBadge(owner: owner),
+                            AgentLevelBadge(agent: owner, compact: true),
                             if (property.updatedAgoText.trim().isNotEmpty) ...[
                               const SizedBox(height: 5),
                               Row(
