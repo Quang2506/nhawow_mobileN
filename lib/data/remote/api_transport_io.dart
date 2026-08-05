@@ -75,11 +75,19 @@ class IoApiTransport implements ApiTransport {
       request.contentLength = payload.length;
       request.add(payload);
       final response = await request.close().timeout(const Duration(seconds: 45));
-      return _readResponse(response);
+
+      // Phải chờ đọc xong toàn bộ response trước khi chạy khối finally.
+      // Nếu chỉ `return _readResponse(response)`, HttpClient có thể bị
+      // close(force: true) khi body vẫn đang được tải, đặc biệt trên iOS.
+      return await _readResponse(response);
     } on ApiTransportException {
       rethrow;
     } on SocketException catch (error) {
       throw ApiTransportException('Không thể kết nối máy chủ: ${error.message}');
+    } on HttpException catch (error) {
+      throw ApiTransportException(
+        'Kết nối tới máy chủ bị ngắt khi đang nhận dữ liệu: ${error.message}',
+      );
     } on TimeoutException {
       throw const ApiTransportException('Máy chủ phản hồi quá lâu.');
     } finally {
@@ -107,11 +115,17 @@ class IoApiTransport implements ApiTransport {
         request.write(body);
       }
       final response = await request.close().timeout(const Duration(seconds: 25));
-      return _readResponse(response);
+
+      // Giữ HttpClient sống cho tới khi đọc xong toàn bộ response body.
+      return await _readResponse(response);
     } on ApiTransportException {
       rethrow;
     } on SocketException catch (error) {
       throw ApiTransportException('Không thể kết nối máy chủ: ${error.message}');
+    } on HttpException catch (error) {
+      throw ApiTransportException(
+        'Kết nối tới máy chủ bị ngắt khi đang nhận dữ liệu: ${error.message}',
+      );
     } on TimeoutException {
       throw const ApiTransportException('Máy chủ phản hồi quá lâu.');
     } finally {
