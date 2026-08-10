@@ -16,12 +16,16 @@ class PropertyFormPage extends StatefulWidget {
     required this.kind,
     required this.propertyType,
     this.initialData,
+    this.postingPackageCode = '',
+    this.postingPackageName = '',
     super.key,
   });
 
   final ListingKind kind;
   final PartnerLookupItem propertyType;
   final PartnerPropertyEditData? initialData;
+  final String postingPackageCode;
+  final String postingPackageName;
 
   @override
   State<PropertyFormPage> createState() => _PropertyFormPageState();
@@ -161,6 +165,48 @@ class _PropertyFormPageState extends State<PropertyFormPage> {
                   kind: widget.kind,
                   propertyType: widget.propertyType,
                 ),
+                if (!_isEditing && widget.postingPackageCode.trim().isNotEmpty) ...[
+                  const SizedBox(height: 10),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFFF8E8),
+                      border: Border.all(color: const Color(0xFFF59E0B)),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.local_offer_outlined, color: Color(0xFFEA7C00)),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                context.tr('Gói đăng tin đã chọn'),
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  color: Color(0xFF7C5B16),
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                widget.postingPackageName.trim().isEmpty
+                                    ? widget.postingPackageCode
+                                    : widget.postingPackageName,
+                                style: const TextStyle(
+                                  color: Color(0xFF9A5A00),
+                                  fontWeight: FontWeight.w900,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
                 const SizedBox(height: 18),
                 const _StepHeader(number: 1, title: 'Thông tin bài đăng'),
                 const SizedBox(height: 12),
@@ -1373,6 +1419,7 @@ class _PropertyFormPageState extends State<PropertyFormPage> {
       waterInfo: _water.text.trim(),
       electricityInfo: _electricity.text.trim(),
       leaseTerm: _field4.text.trim(),
+      postingPackageCode: _isEditing ? '' : widget.postingPackageCode.trim(),
       amenities: _selectedAmenities.toList(growable: false),
       inforTags: _selectedInforTags.entries
           .map(

@@ -4,13 +4,32 @@ import '../app/app_store.dart';
 import '../core/app_theme.dart';
 import '../core/auth_gate.dart';
 import '../core/widgets.dart';
+import '../data/remote/api_transport.dart';
 import '../l10n/app_localizations.dart';
 import '../models/models.dart';
 import '../models/partner_models.dart';
 import 'property_form_page.dart';
+import 'wallet_page.dart';
 
 class PartnerPropertiesPage extends StatefulWidget {
-  const PartnerPropertiesPage({super.key});
+  const PartnerPropertiesPage({
+    this.initialPostingPackageCode = '',
+    this.initialPostingPackageName = '',
+    this.autoStartCreate = false,
+    this.selectedAddonFeatureCode = '',
+    this.selectedAddonFeatureName = '',
+    this.selectedAddonFeatureDescription = '',
+    this.selectedAddonFeaturePrice = 0.0,
+    super.key,
+  });
+
+  final String initialPostingPackageCode;
+  final String initialPostingPackageName;
+  final bool autoStartCreate;
+  final String selectedAddonFeatureCode;
+  final String selectedAddonFeatureName;
+  final String selectedAddonFeatureDescription;
+  final double selectedAddonFeaturePrice;
 
   @override
   State<PartnerPropertiesPage> createState() => _PartnerPropertiesPageState();
@@ -18,9 +37,13 @@ class PartnerPropertiesPage extends StatefulWidget {
 
 class _PartnerPropertiesPageState extends State<PartnerPropertiesPage> {
   bool _initialized = false;
+  bool _autoCreateStarted = false;
   int _cityId = 0;
   int _wardId = 0;
   String _status = 'all';
+
+  bool get _isAddonSelectionMode =>
+      widget.selectedAddonFeatureCode.trim().isNotEmpty;
 
   @override
   void didChangeDependencies() {
@@ -37,8 +60,18 @@ class _PartnerPropertiesPageState extends State<PartnerPropertiesPage> {
     try {
       await Future.wait([
         store.loadPartnerFormLookups(),
-        store.refreshPartnerProperties(),
+        store.refreshPartnerProperties(
+          featureCode: widget.selectedAddonFeatureCode,
+        ),
       ]);
+      if (mounted && widget.autoStartCreate && !_autoCreateStarted) {
+        _autoCreateStarted = true;
+        await _openCreateFlow(
+          context,
+          postingPackageCode: widget.initialPostingPackageCode,
+          postingPackageName: widget.initialPostingPackageName,
+        );
+      }
     } catch (_) {
       // Lỗi được hiển thị bằng partnerPropertyError trong giao diện.
     }
@@ -72,24 +105,32 @@ class _PartnerPropertiesPageState extends State<PartnerPropertiesPage> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(context.tr('Tin đăng của tôi')),
-        actions: [
-          IconButton(
-            tooltip: context.tr('Tạo tin mới'),
-            onPressed: store.isLoadingPartnerLookups
-                ? null
-                : () => _openCreateFlow(context),
-            icon: const Icon(Icons.add_circle_outline),
+        title: Text(
+          context.tr(
+            _isAddonSelectionMode ? 'Quản lý bài đăng' : 'Tin đăng của tôi',
           ),
-        ],
-      ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: store.isLoadingPartnerLookups
+        ),
+        actions: _isAddonSelectionMode
             ? null
-            : () => _openCreateFlow(context),
-        icon: const Icon(Icons.add),
-        label: Text(context.tr('Đăng tin')),
+            : [
+                IconButton(
+                  tooltip: context.tr('Tạo tin mới'),
+                  onPressed: store.isLoadingPartnerLookups
+                      ? null
+                      : () => _openCreateFlow(context),
+                  icon: const Icon(Icons.add_circle_outline),
+                ),
+              ],
       ),
+      floatingActionButton: _isAddonSelectionMode
+          ? null
+          : FloatingActionButton.extended(
+              onPressed: store.isLoadingPartnerLookups
+                  ? null
+                  : () => _openCreateFlow(context),
+              icon: const Icon(Icons.add),
+              label: Text(context.tr('Đăng tin')),
+            ),
       body: RefreshIndicator(
         onRefresh: _applyFilters,
         child: PageContainer(
@@ -97,6 +138,17 @@ class _PartnerPropertiesPageState extends State<PartnerPropertiesPage> {
           child: CustomScrollView(
             physics: const AlwaysScrollableScrollPhysics(),
             slivers: [
+              if (_isAddonSelectionMode)
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.only(bottom: 12),
+                    child: _AddonSelectionBanner(
+                      featureName: widget.selectedAddonFeatureName,
+                      featureDescription:
+                          widget.selectedAddonFeatureDescription,
+                    ),
+                  ),
+                ),
               SliverToBoxAdapter(
                 child: _FilterPanel(
                   lookups: lookups,
@@ -116,6 +168,15 @@ class _PartnerPropertiesPageState extends State<PartnerPropertiesPage> {
                   onReset: _resetFilters,
                 ),
               ),
+              if (!_isAddonSelectionMode)
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.only(top: 10),
+                    child: _TopPinSummary(
+                      count: store.activeTopPropertyCount,
+                    ),
+                  ),
+                ),
               if (store.partnerPropertyError != null)
                 SliverToBoxAdapter(
                   child: Padding(
@@ -152,10 +213,12 @@ class _PartnerPropertiesPageState extends State<PartnerPropertiesPage> {
                     message: context.tr(
                       'Thay đổi bộ lọc hoặc tạo tin đăng bất động sản mới.',
                     ),
-                    action: FilledButton(
-                      onPressed: () => _openCreateFlow(context),
-                      child: Text(context.tr('Tạo tin')),
-                    ),
+                    action: _isAddonSelectionMode
+                        ? null
+                        : FilledButton(
+                            onPressed: () => _openCreateFlow(context),
+                            child: Text(context.tr('Tạo tin')),
+                          ),
                   ),
                 )
               else
@@ -166,7 +229,14 @@ class _PartnerPropertiesPageState extends State<PartnerPropertiesPage> {
                     separatorBuilder: (_, __) => const SizedBox(height: 12),
                     itemBuilder: (context, index) => _PartnerPropertyCard(
                       property: items[index],
+                      isAddonSelectionMode: _isAddonSelectionMode,
+                      selectedAddonFeatureCode:
+                          widget.selectedAddonFeatureCode,
+                      onSelectAddon: () => _buyAddonForProperty(items[index]),
                       onEdit: () => _openEditFlow(items[index]),
+                      onClose: () => _closeProperty(items[index]),
+                      onReopen: () => _reopenProperty(items[index]),
+                      onBoost: () => _buyTopForProperty(items[index]),
                     ),
                   ),
                 ),
@@ -197,6 +267,7 @@ class _PartnerPropertiesPageState extends State<PartnerPropertiesPage> {
         cityId: _cityId > 0 ? _cityId : null,
         wardId: _wardId > 0 ? _wardId : null,
         status: _status,
+        featureCode: widget.selectedAddonFeatureCode,
       );
     } catch (_) {}
   }
@@ -210,11 +281,17 @@ class _PartnerPropertiesPageState extends State<PartnerPropertiesPage> {
     final store = AppScope.of(context);
     try {
       await store.loadPartnerFormLookups();
-      await store.refreshPartnerProperties();
+      await store.refreshPartnerProperties(
+        featureCode: widget.selectedAddonFeatureCode,
+      );
     } catch (_) {}
   }
 
-  Future<void> _openCreateFlow(BuildContext context) async {
+  Future<void> _openCreateFlow(
+    BuildContext context, {
+    String postingPackageCode = '',
+    String postingPackageName = '',
+  }) async {
     final store = AppScope.of(context);
     try {
       if (store.partnerFormLookups.isEmpty) {
@@ -278,6 +355,8 @@ class _PartnerPropertiesPageState extends State<PartnerPropertiesPage> {
         builder: (_) => PropertyFormPage(
           kind: kind!,
           propertyType: propertyType!,
+          postingPackageCode: postingPackageCode,
+          postingPackageName: postingPackageName,
         ),
       ),
     );
@@ -325,6 +404,239 @@ class _PartnerPropertiesPageState extends State<PartnerPropertiesPage> {
       );
       if (!mounted || updated != true) return;
       await _applyFilters();
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(error.toString())),
+      );
+    }
+  }
+
+  Future<void> _buyAddonForProperty(PropertyModel property) async {
+    if (!_isAddonSelectionMode || !mounted) return;
+    final featureName = widget.selectedAddonFeatureName.trim().isEmpty
+        ? context.tr('Dịch vụ gia tăng')
+        : widget.selectedAddonFeatureName.trim();
+    await _confirmAndBuyFeature(
+      property: property,
+      featureCode: widget.selectedAddonFeatureCode,
+      featureName: featureName,
+      featurePrice: widget.selectedAddonFeaturePrice,
+    );
+  }
+
+  Future<void> _buyTopForProperty(PropertyModel property) async {
+    if (!mounted) return;
+    final store = AppScope.of(context);
+    if (store.addonFeatures.isEmpty) {
+      await store.refreshMembership();
+      if (!mounted) return;
+    }
+
+    var featureName = context.tr('Ghim Top');
+    var featurePrice = 0.0;
+    for (final feature in store.addonFeatures) {
+      if (feature.code.trim().toLowerCase() == 'top7') {
+        if (feature.name.trim().isNotEmpty) featureName = feature.name.trim();
+        featurePrice = feature.price;
+        break;
+      }
+    }
+
+    await _confirmAndBuyFeature(
+      property: property,
+      featureCode: 'top7',
+      featureName: property.boostedUntil != null &&
+              property.boostedUntil!.isAfter(DateTime.now().toUtc())
+          ? context.tr('Gia hạn Ghim Top')
+          : featureName,
+      featurePrice: featurePrice,
+      showFreeTopHint: true,
+    );
+  }
+
+  Future<void> _confirmAndBuyFeature({
+    required PropertyModel property,
+    required String featureCode,
+    required String featureName,
+    required double featurePrice,
+    bool showFreeTopHint = false,
+  }) async {
+    if (!mounted) return;
+    final store = AppScope.of(context);
+    final content = <String>[featureName, property.title];
+    if (showFreeTopHint && store.membershipUsage.freeTopRemaining > 0) {
+      content.add(
+        context.tr(
+          'Hệ thống sẽ ưu tiên dùng lượt Ghim Top miễn phí còn lại.',
+        ),
+      );
+    } else if (featurePrice > 0) {
+      content.add('${context.tr('Giá dịch vụ')}: ${_formatMoney(featurePrice)} đ');
+    }
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(context.tr('Xác nhận mua dịch vụ')),
+        content: Text(content.join('\n\n')),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: Text(context.tr('Hủy')),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: Text(context.tr('Xác nhận')),
+          ),
+        ],
+      ),
+    );
+    if (!mounted || confirmed != true) return;
+
+    try {
+      final message = await store.buyAddonFeature(
+        propertyId: property.id,
+        featureCode: featureCode,
+        useFreeTopBenefit: true,
+      );
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(message),
+          backgroundColor: const Color(0xFF10983F),
+        ),
+      );
+      await _applyFilters();
+    } on ApiTransportException catch (error) {
+      if (!mounted) return;
+      if (error.code == 'INSUFFICIENT_WALLET_BALANCE') {
+        final openWallet = await showDialog<bool>(
+          context: context,
+          builder: (dialogContext) => AlertDialog(
+            title: Text(context.tr('Số dư ví không đủ')),
+            content: Text(error.message),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(dialogContext).pop(false),
+                child: Text(context.tr('Đóng')),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.of(dialogContext).pop(true),
+                child: Text(context.tr('Nạp ví')),
+              ),
+            ],
+          ),
+        );
+        if (openWallet == true && mounted) {
+          await Navigator.of(context).push(
+            MaterialPageRoute<void>(builder: (_) => const WalletPage()),
+          );
+          if (mounted) await _applyFilters();
+        }
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(error.message)),
+        );
+      }
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(error.toString())),
+      );
+    }
+  }
+
+  Future<void> _closeProperty(PropertyModel property) async {
+    if (!mounted) return;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(context.tr('Đóng tin')),
+        content: Text(
+          context.tr(
+            'Bạn có chắc muốn đóng bài đăng này không?',
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: Text(context.tr('Hủy')),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: Text(context.tr('Đóng tin')),
+          ),
+        ],
+      ),
+    );
+    if (!mounted || confirmed != true) return;
+
+    final store = AppScope.of(context);
+    try {
+      final message = await store.closePartnerProperty(property.id);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(message),
+          backgroundColor: const Color(0xFF10983F),
+        ),
+      );
+      await _applyFilters();
+    } on ApiTransportException catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(error.message)),
+      );
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(error.toString())),
+      );
+    }
+  }
+
+  Future<void> _reopenProperty(PropertyModel property) async {
+    if (!mounted) return;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(context.tr('Mở lại tin')),
+        content: Text(
+          context.tr(
+            'Bạn có chắc muốn mở lại bài đăng này không? Bài đăng sẽ chuyển về trạng thái chờ duyệt.',
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: Text(context.tr('Hủy')),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: Text(context.tr('Mở lại tin')),
+          ),
+        ],
+      ),
+    );
+    if (!mounted || confirmed != true) return;
+
+    final store = AppScope.of(context);
+    try {
+      final message = await store.reopenPartnerProperty(property.id);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(message),
+          backgroundColor: const Color(0xFF10983F),
+        ),
+      );
+      await _applyFilters();
+    } on ApiTransportException catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(error.message)),
+      );
     } catch (error) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -553,18 +865,162 @@ class _FilterPanel extends StatelessWidget {
   }
 }
 
-class _PartnerPropertyCard extends StatelessWidget {
-  const _PartnerPropertyCard({
-    required this.property,
-    required this.onEdit,
+class _AddonSelectionBanner extends StatelessWidget {
+  const _AddonSelectionBanner({
+    required this.featureName,
+    required this.featureDescription,
   });
 
-  final PropertyModel property;
-  final Future<void> Function() onEdit;
+  final String featureName;
+  final String featureDescription;
 
   @override
   Widget build(BuildContext context) {
-    final store = AppScope.of(context);
+    final name = featureName.trim().isEmpty
+        ? context.tr('Dịch vụ gia tăng')
+        : featureName.trim();
+    final description = featureDescription.trim();
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: BoxDecoration(
+        color: const Color(0xFFECFDF5),
+        border: Border.all(color: const Color(0xFF86EFAC)),
+        borderRadius: BorderRadius.circular(15),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 38,
+            height: 38,
+            decoration: const BoxDecoration(
+              color: Color(0xFF10B981),
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(Icons.add_rounded, color: Colors.white, size: 25),
+          ),
+          const SizedBox(width: 11),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  context.tr('Vui lòng chọn một bài đăng để sử dụng dịch vụ'),
+                  style: const TextStyle(
+                    color: Color(0xFF065F46),
+                    fontSize: 15,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  description.isEmpty ? name : '$name — $description',
+                  style: const TextStyle(
+                    color: Color(0xFF047857),
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _TopPinSummary extends StatelessWidget {
+  const _TopPinSummary({required this.count});
+
+  final int count;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 10),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFFF7ED),
+        border: Border.all(color: const Color(0xFFFED7AA)),
+        borderRadius: BorderRadius.circular(13),
+      ),
+      child: Row(
+        children: [
+          const Icon(
+            Icons.push_pin_rounded,
+            size: 19,
+            color: Color(0xFFEA580C),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              context.tr('Tin đang Ghim Top'),
+              style: const TextStyle(
+                color: Color(0xFF9A3412),
+                fontSize: 13,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+            decoration: BoxDecoration(
+              color: const Color(0xFFEA580C),
+              borderRadius: BorderRadius.circular(999),
+            ),
+            child: Text(
+              context.tr('{count} tin', {'count': '$count'}),
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 12,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _PartnerPropertyCard extends StatelessWidget {
+  const _PartnerPropertyCard({
+    required this.property,
+    required this.isAddonSelectionMode,
+    required this.selectedAddonFeatureCode,
+    required this.onSelectAddon,
+    required this.onEdit,
+    required this.onClose,
+    required this.onReopen,
+    required this.onBoost,
+  });
+
+  final PropertyModel property;
+  final bool isAddonSelectionMode;
+  final String selectedAddonFeatureCode;
+  final Future<void> Function() onSelectAddon;
+  final Future<void> Function() onEdit;
+  final Future<void> Function() onClose;
+  final Future<void> Function() onReopen;
+  final Future<void> Function() onBoost;
+
+  bool get _isClosed =>
+      property.status == PropertyStatus.closed ||
+      property.status == PropertyStatus.sold ||
+      property.status == PropertyStatus.rented;
+
+  bool get _hasActiveTop =>
+      !_isClosed &&
+      property.boostedUntil != null &&
+      property.boostedUntil!.isAfter(DateTime.now().toUtc());
+
+  bool get _isSelectedUrgentPurchased =>
+      selectedAddonFeatureCode.trim().toLowerCase() == 'urgent_review' &&
+      property.hasUrgentReview;
+
+  @override
+  Widget build(BuildContext context) {
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(14),
@@ -572,8 +1028,8 @@ class _PartnerPropertyCard extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             SizedBox(
-              width: 112,
-              height: 94,
+              width: 105,
+              height: 92,
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(13),
                 child: PropertyVisual(property: property),
@@ -593,9 +1049,127 @@ class _PartnerPropertyCard extends StatelessWidget {
                       fontWeight: FontWeight.w900,
                     ),
                   ),
-                  const SizedBox(height: 6),
-                  Text('${context.tr(property.priceLabel)} · ${property.area} m²'),
-                  const SizedBox(height: 8),
+                  if (property.hasUrgentReview) ...[
+                    const SizedBox(height: 7),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 5,
+                      ),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFFFF7ED),
+                        borderRadius: BorderRadius.circular(999),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(
+                            Icons.bolt_rounded,
+                            size: 15,
+                            color: Color(0xFFEA580C),
+                          ),
+                          const SizedBox(width: 3),
+                          Flexible(
+                            child: Text(
+                              context.tr(
+                                'Duyệt siêu tốc - đang hiển thị công khai',
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                color: Color(0xFFEA580C),
+                                fontSize: 11,
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                  if (_hasActiveTop && property.boostedUntil != null) ...[
+                    const SizedBox(height: 7),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 5,
+                      ),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFFFF1F2),
+                        borderRadius: BorderRadius.circular(999),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(
+                            Icons.push_pin_rounded,
+                            size: 14,
+                            color: Color(0xFFE11D48),
+                          ),
+                          const SizedBox(width: 4),
+                          Flexible(
+                            child: Text(
+                              '${context.tr('Ghim Top')} · ${_featureRemainingText(context, property.boostedUntil!)}',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                color: Color(0xFFBE123C),
+                                fontSize: 11,
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                  if (isAddonSelectionMode && !_isClosed) ...[
+                    const SizedBox(height: 8),
+                    if (_isSelectedUrgentPurchased)
+                      _PurchasedFeaturePanel(
+                        icon: Icons.bolt_rounded,
+                        detail: context.tr(
+                          'Tin đã được hiển thị công khai và đang chờ Admin hoàn thiện kiểm duyệt.',
+                        ),
+                      )
+                    else if (property.hasActiveSelectedPaidFeature &&
+                        property.selectedPaidFeatureExpiresAt != null)
+                      _PurchasedFeaturePanel(
+                        icon: Icons.access_time_filled_rounded,
+                        detail: _featureRemainingText(
+                          context,
+                          property.selectedPaidFeatureExpiresAt!,
+                        ),
+                      )
+                    else
+                      FilledButton.icon(
+                        onPressed: onSelectAddon,
+                        icon: const Icon(Icons.check_circle, size: 15),
+                        label: Text(context.tr('Chọn tin này')),
+                        style: FilledButton.styleFrom(
+                          backgroundColor: const Color(0xFF10B981),
+                          foregroundColor: Colors.white,
+                          minimumSize: const Size(0, 34),
+                          padding: const EdgeInsets.symmetric(horizontal: 12),
+                          visualDensity: VisualDensity.compact,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(9),
+                          ),
+                          textStyle: const TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                      ),
+                  ],
+                  const SizedBox(height: 7),
+                  Text(
+                    '${context.tr(property.priceLabel)} · ${property.area} m²',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(fontSize: 12),
+                  ),
+                  const SizedBox(height: 7),
                   Row(
                     children: [
                       Container(
@@ -614,60 +1188,157 @@ class _PartnerPropertyCard extends StatelessWidget {
                           style: TextStyle(
                             color: property.status
                                 .color(Theme.of(context).colorScheme),
-                            fontSize: 12,
+                            fontSize: 11,
                             fontWeight: FontWeight.w800,
                           ),
                         ),
-                      ),
-                      const Spacer(),
-                      Text(
-                        context.tr(
-                          '{count} lượt xem',
-                          {'count': property.compactViewCount},
-                        ),
-                        style: const TextStyle(fontSize: 12),
                       ),
                     ],
                   ),
                 ],
               ),
             ),
-            PopupMenuButton<String>(
-              onSelected: (value) async {
-                if (value == 'edit') {
-                  await onEdit();
-                } else if (value == 'close') {
-                  store.changePropertyStatus(property.id, PropertyStatus.closed);
-                } else if (value == 'reopen') {
-                  store.changePropertyStatus(property.id, PropertyStatus.published);
-                }
-              },
-              itemBuilder: (_) => [
-                PopupMenuItem(
-                  value: 'edit',
-                  child: Text(context.tr('Chỉnh sửa')),
-                ),
-                if (property.status == PropertyStatus.closed)
+            if (!isAddonSelectionMode)
+              PopupMenuButton<String>(
+                onSelected: (value) async {
+                  if (value == 'edit') {
+                    await onEdit();
+                  } else if (value == 'close') {
+                    await onClose();
+                  } else if (value == 'reopen') {
+                    await onReopen();
+                  } else if (value == 'boost') {
+                    await onBoost();
+                  }
+                },
+                itemBuilder: (_) => [
                   PopupMenuItem(
-                    value: 'reopen',
-                    child: Text(context.tr('Mở lại tin')),
-                  )
-                else
-                  PopupMenuItem(
-                    value: 'close',
-                    child: Text(context.tr('Đóng tin')),
+                    value: 'edit',
+                    child: Text(context.tr('Chỉnh sửa')),
                   ),
-                PopupMenuItem(
-                  value: 'boost',
-                  child: Text(context.tr('Ghim Top')),
-                ),
-              ],
-            ),
+                  if (_isClosed)
+                    PopupMenuItem(
+                      value: 'reopen',
+                      child: Text(context.tr('Mở lại tin')),
+                    )
+                  else ...[
+                    PopupMenuItem(
+                      value: 'close',
+                      child: Text(context.tr('Đóng tin')),
+                    ),
+                    PopupMenuItem(
+                      value: 'boost',
+                      child: Text(
+                        context.tr(_hasActiveTop ? 'Gia hạn Ghim Top' : 'Ghim Top'),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
           ],
         ),
       ),
     );
   }
+}
+
+class _PurchasedFeaturePanel extends StatelessWidget {
+  const _PurchasedFeaturePanel({
+    required this.icon,
+    required this.detail,
+  });
+
+  final IconData icon;
+  final String detail;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 6),
+      decoration: BoxDecoration(
+        color: const Color(0xFFECFDF5),
+        border: Border.all(color: const Color(0xFF86EFAC)),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 24,
+            height: 24,
+            decoration: const BoxDecoration(
+              color: Color(0xFF10B981),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(icon, size: 14, color: Colors.white),
+          ),
+          const SizedBox(width: 7),
+          Flexible(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  context.tr('Đã mua'),
+                  style: const TextStyle(
+                    color: Color(0xFF047857),
+                    fontSize: 11,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                Text(
+                  detail,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: Color(0xFF065F46),
+                    fontSize: 10,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+String _featureRemainingText(BuildContext context, DateTime expiresAt) {
+  final remaining = expiresAt.toUtc().difference(DateTime.now().toUtc());
+  if (remaining.inSeconds <= 0) return context.tr('Đã hết thời gian');
+
+  final days = remaining.inDays;
+  final hours = remaining.inHours.remainder(24);
+  final minutes = remaining.inMinutes.remainder(60);
+  if (days > 0) {
+    return context.tr(
+      'Còn {days} ngày {hours} giờ',
+      {'days': '$days', 'hours': '$hours'},
+    );
+  }
+  if (remaining.inHours > 0) {
+    return context.tr(
+      'Còn {hours} giờ {minutes} phút',
+      {'hours': '${remaining.inHours}', 'minutes': '$minutes'},
+    );
+  }
+  return context.tr(
+    'Còn {minutes} phút',
+    {'minutes': '${remaining.inMinutes.clamp(1, 59)}'},
+  );
+}
+
+String _formatMoney(double value) {
+  final digits = value.round().toString();
+  final buffer = StringBuffer();
+  for (var index = 0; index < digits.length; index++) {
+    if (index > 0 && (digits.length - index) % 3 == 0) buffer.write('.');
+    buffer.write(digits[index]);
+  }
+  return buffer.toString();
 }
 
 class _ListingKindSheet extends StatelessWidget {

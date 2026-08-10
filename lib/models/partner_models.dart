@@ -393,6 +393,7 @@ class PartnerPropertyCreateRequest {
     this.waterInfo = '',
     this.electricityInfo = '',
     this.leaseTerm = '',
+    this.postingPackageCode = '',
     this.amenities = const <String>[],
     this.inforTags = const <PartnerInforTagValue>[],
     this.images = const <PartnerImagePayload>[],
@@ -421,6 +422,7 @@ class PartnerPropertyCreateRequest {
   final String waterInfo;
   final String electricityInfo;
   final String leaseTerm;
+  final String postingPackageCode;
   final List<String> amenities;
   final List<PartnerInforTagValue> inforTags;
   final List<PartnerImagePayload> images;
@@ -449,6 +451,7 @@ class PartnerPropertyCreateRequest {
         'waterInfo': waterInfo,
         'electricityInfo': electricityInfo,
         'leaseTerm': leaseTerm,
+        'postingPackageCode': postingPackageCode,
         'amenities': amenities,
         'inforTags': inforTags.map((item) => item.toJson()).toList(),
         'images': images.map((item) => item.toJson()).toList(),

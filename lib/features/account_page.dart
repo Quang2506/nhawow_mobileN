@@ -372,22 +372,36 @@ class _LoggedInAccount extends StatelessWidget {
           _AccountMenuItem(
             icon: Icons.home_work_outlined,
             title: context.tr('Quản lý tin đăng'),
-            subtitle: context.tr(
-              '{count} bất động sản của bạn',
-              {'count': store.partnerProperties.length},
-            ),
-            onTap: () => Navigator.of(context).push(
-              MaterialPageRoute<void>(
-                builder: (_) => const PartnerPropertiesPage(),
-              ),
-            ),
+            subtitle: store.isLoadingPartnerProperties &&
+                    store.partnerProperties.isEmpty
+                ? context.tr('Đang tải...')
+                : context.tr(
+                    '{count} bất động sản của bạn',
+                    {'count': store.partnerProperties.length},
+                  ),
+            onTap: () async {
+              await Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                  builder: (_) => const PartnerPropertiesPage(),
+                ),
+              );
+              if (!context.mounted) return;
+              // Trang quản lý có thể đang lọc theo trạng thái/thành phố.
+              // Khi quay lại, tải lại toàn bộ để con số tại Tài khoản luôn là
+              // tổng số tin thực tế của người dùng.
+              await store.preloadPartnerProperties();
+            },
           ),
         _AccountMenuItem(
           icon: Icons.workspace_premium_outlined,
           title: context.tr('Hội viên'),
           subtitle: context.tr(
             'Gói hiện tại: {code}',
-            {'code': store.membershipCode},
+            {
+              'code': store.membershipUsage.currentPlanName.trim().isNotEmpty
+                  ? store.membershipUsage.currentPlanName
+                  : store.membershipCode,
+            },
           ),
           onTap: () => Navigator.of(context).push(
             MaterialPageRoute<void>(builder: (_) => const MembershipPage()),

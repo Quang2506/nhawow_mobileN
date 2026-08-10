@@ -12,6 +12,7 @@ import '../core/app_theme.dart';
 import '../core/auth_gate.dart';
 import '../core/widgets.dart';
 import '../core/google_map_embed.dart';
+import '../core/media_url_resolver.dart';
 import '../config/app_config.dart';
 import '../models/models.dart';
 import '../l10n/app_localizations.dart';
@@ -114,7 +115,7 @@ class _PropertyDetailPageState extends State<PropertyDetailPage> {
         toolbarHeight: 60,
         backgroundColor:
             showSolidHeader ? Colors.white : Colors.transparent,
-        foregroundColor: AppTheme.navy,
+        foregroundColor: showSolidHeader ? AppTheme.navy : Colors.white,
         surfaceTintColor: Colors.transparent,
         elevation: 0,
         scrolledUnderElevation: 0,
@@ -144,8 +145,9 @@ class _PropertyDetailPageState extends State<PropertyDetailPage> {
             onPressed: () => AuthGate.toggleFavorite(context, property.id),
             icon: Icon(
               property.isFavorite ? Icons.favorite : Icons.favorite_border,
-              color:
-                  property.isFavorite ? AppTheme.danger : AppTheme.navy,
+              color: showSolidHeader
+                  ? (property.isFavorite ? AppTheme.danger : AppTheme.navy)
+                  : Colors.white,
               size: 22,
             ),
           ),
@@ -319,20 +321,22 @@ class _HeaderActionButton extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 8),
       child: Material(
-        color: Colors.white,
-        elevation: 2,
-        shadowColor: const Color(0x44000000),
+        color: Colors.black.withValues(alpha: 0.66),
+        elevation: 0,
         shape: const CircleBorder(),
         clipBehavior: Clip.antiAlias,
-        child: IconButton(
-          tooltip: tooltip,
-          onPressed: onPressed,
-          icon: icon,
-          padding: EdgeInsets.zero,
-          visualDensity: VisualDensity.compact,
-          constraints: const BoxConstraints.tightFor(
-            width: 44,
-            height: 44,
+        child: IconTheme(
+          data: const IconThemeData(color: Colors.white),
+          child: IconButton(
+            tooltip: tooltip,
+            onPressed: onPressed,
+            icon: icon,
+            padding: EdgeInsets.zero,
+            visualDensity: VisualDensity.compact,
+            constraints: const BoxConstraints.tightFor(
+              width: 44,
+              height: 44,
+            ),
           ),
         ),
       ),
@@ -990,6 +994,17 @@ class _ZoomableNetworkImageState extends State<_ZoomableNetworkImage> {
 
   @override
   Widget build(BuildContext context) {
+    final resolvedUrl = MediaUrlResolver.resolve(widget.url);
+    if (resolvedUrl.isEmpty) {
+      return const Center(
+        child: Icon(
+          Icons.broken_image_outlined,
+          color: Colors.white70,
+          size: 64,
+        ),
+      );
+    }
+
     return InteractiveViewer(
       transformationController: _transformationController,
       minScale: 1,
@@ -998,9 +1013,11 @@ class _ZoomableNetworkImageState extends State<_ZoomableNetworkImage> {
       boundaryMargin: const EdgeInsets.all(80),
       child: Center(
         child: Image.network(
-          widget.url,
+          resolvedUrl,
           fit: BoxFit.contain,
           filterQuality: FilterQuality.high,
+          gaplessPlayback: true,
+          webHtmlElementStrategy: WebHtmlElementStrategy.prefer,
           loadingBuilder: (context, child, progress) {
             if (progress == null) return child;
             final total = progress.expectedTotalBytes;

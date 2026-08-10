@@ -24,6 +24,9 @@ PropertyStatus propertyStatusFromCode(String? raw) {
   switch ((raw ?? '').trim().toLowerCase()) {
     case 'pending':
     case 'pendingapproval':
+    case 'pending_approval':
+    case 'pending-approval':
+    case 'pending approval':
       return PropertyStatus.pending;
     case 'draft':
       return PropertyStatus.draft;
@@ -181,6 +184,17 @@ class PropertyModel {
     this.isFavorite = false,
     this.viewCount = 0,
     this.status = PropertyStatus.published,
+    this.sortPriority = 0,
+    this.membershipPlanCodeAtPost = '',
+    this.hasUrgentReview = false,
+    this.selectedPaidFeatureCode = '',
+    this.selectedPaidFeatureExpiresAt,
+    this.createdAt,
+    this.publishedAt,
+    this.listingExpiresAt,
+    this.refreshedAt,
+    this.boostedUntil,
+    this.certifiedUntil,
     this.frontage,
     this.roadWidth,
     this.legalInfo,
@@ -239,6 +253,17 @@ class PropertyModel {
   final bool isFavorite;
   final int viewCount;
   final PropertyStatus status;
+  final int sortPriority;
+  final String membershipPlanCodeAtPost;
+  final bool hasUrgentReview;
+  final String selectedPaidFeatureCode;
+  final DateTime? selectedPaidFeatureExpiresAt;
+  final DateTime? createdAt;
+  final DateTime? publishedAt;
+  final DateTime? listingExpiresAt;
+  final DateTime? refreshedAt;
+  final DateTime? boostedUntil;
+  final DateTime? certifiedUntil;
   final String? frontage;
   final String? roadWidth;
   final String? legalInfo;
@@ -379,6 +404,28 @@ class PropertyModel {
       return normalized == 'true' || normalized == '1';
     }
 
+    DateTime? toDateTime(Object? value) {
+      if (value == null) return null;
+      if (value is DateTime) return value.toUtc();
+      if (value is num) {
+        return DateTime.fromMillisecondsSinceEpoch(
+          value.toInt(),
+          isUtc: true,
+        );
+      }
+
+      final text = value.toString().trim();
+      if (text.isEmpty) return null;
+      final microsoftJsonDate = RegExp(r'^/Date\((-?\d+)').firstMatch(text);
+      if (microsoftJsonDate != null) {
+        final milliseconds = int.tryParse(microsoftJsonDate.group(1) ?? '');
+        if (milliseconds != null) {
+          return DateTime.fromMillisecondsSinceEpoch(milliseconds, isUtc: true);
+        }
+      }
+      return DateTime.tryParse(text)?.toUtc();
+    }
+
     final rawImages = <String>[
       ...imageList(json['imageUrls']),
       ...imageList(json['images']),
@@ -452,6 +499,20 @@ class PropertyModel {
       isFavorite: toBool(json['isFavorite']),
       viewCount: toInt(json['viewCount'] ?? json['view_count'] ?? json['views']),
       status: propertyStatusFromCode(json['status']?.toString()),
+      sortPriority: toInt(json['sortPriority']),
+      membershipPlanCodeAtPost:
+          (json['membershipPlanCodeAtPost'] ?? '').toString(),
+      hasUrgentReview: toBool(json['hasUrgentReview']),
+      selectedPaidFeatureCode:
+          (json['selectedPaidFeatureCode'] ?? '').toString(),
+      selectedPaidFeatureExpiresAt:
+          toDateTime(json['selectedPaidFeatureExpiresAt']),
+      createdAt: toDateTime(json['createdAt']),
+      publishedAt: toDateTime(json['publishedAt']),
+      listingExpiresAt: toDateTime(json['listingExpiresAt']),
+      refreshedAt: toDateTime(json['refreshedAt']),
+      boostedUntil: toDateTime(json['boostedUntil']),
+      certifiedUntil: toDateTime(json['certifiedUntil']),
       frontage: _nullableText(json['frontage']),
       roadWidth: _nullableText(json['roadWidth']),
       legalInfo: _nullableText(json['legalInfo']),
@@ -515,6 +576,17 @@ class PropertyModel {
       isFavorite: isFavorite ?? this.isFavorite,
       viewCount: viewCount,
       status: status ?? this.status,
+      sortPriority: sortPriority,
+      membershipPlanCodeAtPost: membershipPlanCodeAtPost,
+      hasUrgentReview: hasUrgentReview,
+      selectedPaidFeatureCode: selectedPaidFeatureCode,
+      selectedPaidFeatureExpiresAt: selectedPaidFeatureExpiresAt,
+      createdAt: createdAt,
+      publishedAt: publishedAt,
+      listingExpiresAt: listingExpiresAt,
+      refreshedAt: refreshedAt,
+      boostedUntil: boostedUntil,
+      certifiedUntil: certifiedUntil,
       frontage: frontage,
       roadWidth: roadWidth,
       legalInfo: legalInfo,
@@ -534,6 +606,18 @@ class PropertyModel {
       isApproximateLocation: isApproximateLocation,
     );
   }
+
+  bool get hasActiveSelectedPaidFeature {
+    final code = selectedPaidFeatureCode.trim();
+    final expiresAt = selectedPaidFeatureExpiresAt;
+    return code.isNotEmpty &&
+        expiresAt != null &&
+        expiresAt.isAfter(DateTime.now().toUtc());
+  }
+
+  bool get hasPurchasedSelectedUrgentReview =>
+      selectedPaidFeatureCode.trim().toLowerCase() == 'urgent_review' &&
+      hasUrgentReview;
 
   /// Địa chỉ công khai do API web trả về từ `properties.address_line`.
   ///
@@ -1208,25 +1292,75 @@ class NotificationModel {
     required this.title,
     required this.message,
     required this.createdAt,
+    this.type = '',
+    this.url = '',
+    this.propertyTitle = '',
+    this.readAt,
     this.propertyId,
     this.isRead = false,
   });
 
   final int id;
+  final String type;
   final String title;
   final String message;
+  final String url;
+  final String propertyTitle;
   final DateTime createdAt;
+  final DateTime? readAt;
   final int? propertyId;
   final bool isRead;
 
-  NotificationModel copyWith({bool? isRead}) {
+  NotificationModel copyWith({bool? isRead, DateTime? readAt}) {
     return NotificationModel(
       id: id,
+      type: type,
       title: title,
       message: message,
+      url: url,
+      propertyTitle: propertyTitle,
       createdAt: createdAt,
+      readAt: readAt ?? this.readAt,
       propertyId: propertyId,
       isRead: isRead ?? this.isRead,
+    );
+  }
+
+  factory NotificationModel.fromJson(Map<String, dynamic> json) {
+    int toInt(Object? value) {
+      if (value is num) return value.toInt();
+      return int.tryParse(value?.toString() ?? '') ?? 0;
+    }
+
+    DateTime parseDate(Object? value) {
+      final text = value?.toString().trim() ?? '';
+      final direct = DateTime.tryParse(text);
+      if (direct != null) return direct;
+      final match = RegExp(r'/Date\((\d+)(?:[+-]\d+)?\)/').firstMatch(text);
+      final millis = match == null ? null : int.tryParse(match.group(1) ?? '');
+      return millis == null
+          ? DateTime.fromMillisecondsSinceEpoch(0, isUtc: true)
+          : DateTime.fromMillisecondsSinceEpoch(millis, isUtc: true);
+    }
+
+    DateTime? parseNullableDate(Object? value) {
+      final text = value?.toString().trim() ?? '';
+      if (text.isEmpty || text == 'null') return null;
+      return parseDate(value);
+    }
+
+    final rawPropertyId = json['propertyId'];
+    return NotificationModel(
+      id: toInt(json['id']),
+      type: (json['type'] ?? '').toString(),
+      title: (json['title'] ?? '').toString(),
+      message: (json['message'] ?? '').toString(),
+      url: (json['url'] ?? '').toString(),
+      propertyTitle: (json['propertyTitle'] ?? '').toString(),
+      createdAt: parseDate(json['createdAt']),
+      readAt: parseNullableDate(json['readAt']),
+      propertyId: rawPropertyId == null ? null : toInt(rawPropertyId),
+      isRead: json['isRead'] == true || json['isRead']?.toString() == '1',
     );
   }
 }
@@ -1235,22 +1369,64 @@ class MembershipPlanModel {
   const MembershipPlanModel({
     required this.code,
     required this.name,
-    required this.priceLabel,
+    this.price = 0,
+    this.label = '',
+    this.priceLabel = '',
     required this.dailyPostLimit,
     required this.monthlyPostLimit,
     required this.freeTopLimit,
-    required this.benefits,
+    this.benefits = const <String>[],
+    this.hasPrioritySupport = false,
+    this.hasDedicatedSupport = false,
+    this.hasFastReview = false,
     this.isRecommended = false,
   });
 
   final String code;
   final String name;
+  final double price;
+  final String label;
   final String priceLabel;
   final int dailyPostLimit;
   final int monthlyPostLimit;
   final int freeTopLimit;
   final List<String> benefits;
+  final bool hasPrioritySupport;
+  final bool hasDedicatedSupport;
+  final bool hasFastReview;
   final bool isRecommended;
+
+  factory MembershipPlanModel.fromJson(Map<String, dynamic> json) {
+    int toInt(Object? value) {
+      if (value is num) return value.toInt();
+      return int.tryParse(value?.toString() ?? '') ?? 0;
+    }
+
+    double toDouble(Object? value) {
+      if (value is num) return value.toDouble();
+      return double.tryParse(value?.toString() ?? '') ?? 0;
+    }
+
+    bool toBool(Object? value) {
+      if (value is bool) return value;
+      final text = value?.toString().toLowerCase();
+      return text == '1' || text == 'true';
+    }
+
+    return MembershipPlanModel(
+      code: (json['code'] ?? '').toString(),
+      name: (json['name'] ?? '').toString(),
+      label: (json['label'] ?? '').toString(),
+      price: toDouble(json['price']),
+      dailyPostLimit: toInt(json['dailyPostLimit']),
+      monthlyPostLimit: toInt(json['monthlyPostLimit']),
+      freeTopLimit: toInt(json['freeTopLimit']),
+      hasPrioritySupport: toBool(json['hasPrioritySupport']),
+      hasDedicatedSupport: toBool(json['hasDedicatedSupport']),
+      hasFastReview: toBool(json['hasFastReview']),
+      isRecommended: toBool(json['isRecommended']),
+    );
+  }
 }
 
 class WalletTransactionModel {
@@ -1259,14 +1435,62 @@ class WalletTransactionModel {
     required this.title,
     required this.amount,
     required this.createdAt,
+    this.type = '',
+    this.balanceBefore = 0,
+    this.balanceAfter = 0,
+    this.referenceType = '',
+    this.referenceId,
   });
 
   final int id;
   final String title;
+  final String type;
   final double amount;
+  final double balanceBefore;
+  final double balanceAfter;
+  final String referenceType;
+  final int? referenceId;
   final DateTime createdAt;
 
   bool get isCredit => amount >= 0;
+
+  factory WalletTransactionModel.fromJson(Map<String, dynamic> json) {
+    int toInt(Object? value) {
+      if (value is num) return value.toInt();
+      return int.tryParse(value?.toString() ?? '') ?? 0;
+    }
+
+    double toDouble(Object? value) {
+      if (value is num) return value.toDouble();
+      return double.tryParse(value?.toString() ?? '') ?? 0;
+    }
+
+    DateTime parseDate(Object? value) {
+      final text = value?.toString().trim() ?? '';
+      final direct = DateTime.tryParse(text);
+      if (direct != null) return direct;
+      final match = RegExp(r'/Date\((\d+)(?:[+-]\d+)?\)/').firstMatch(text);
+      final millis = match == null ? null : int.tryParse(match.group(1) ?? '');
+      return millis == null
+          ? DateTime.fromMillisecondsSinceEpoch(0, isUtc: true)
+          : DateTime.fromMillisecondsSinceEpoch(millis, isUtc: true);
+    }
+
+    final rawReferenceId = json['referenceId'];
+    final description = (json['description'] ?? '').toString();
+    final type = (json['type'] ?? '').toString();
+    return WalletTransactionModel(
+      id: toInt(json['id']),
+      type: type,
+      title: description.isNotEmpty ? description : type,
+      amount: toDouble(json['amount']),
+      balanceBefore: toDouble(json['balanceBefore']),
+      balanceAfter: toDouble(json['balanceAfter']),
+      referenceType: (json['referenceType'] ?? '').toString(),
+      referenceId: rawReferenceId == null ? null : toInt(rawReferenceId),
+      createdAt: parseDate(json['createdAt']),
+    );
+  }
 }
 
 class SearchFilterModel {

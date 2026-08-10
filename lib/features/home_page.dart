@@ -210,7 +210,12 @@ class _HomePageState extends State<HomePage> {
         body: Stack(
           children: [
             RefreshIndicator(
-              onRefresh: store.refreshProperties,
+              onRefresh: () async {
+                await store.refreshProperties(force: true);
+                if (store.isLoggedIn) {
+                  await store.refreshNotifications(force: true);
+                }
+              },
               child: SingleChildScrollView(
                 controller: _scrollController,
                 physics: const AlwaysScrollableScrollPhysics(),
@@ -354,11 +359,10 @@ class _HomeHeaderUiTuning {
   static const double maxBannerWidth = 750;
   static const double bannerAspectRatio = 750 / 500;
 
-  // Độ nâng của cả cụm tìm kiếm + danh mục lên trên banner.
-  // Tăng giá trị này nếu muốn cụm được đẩy lên cao hơn nữa.
-  static const double verySmallControlsLift = 28;
-  static const double compactControlsLift = 85;
-  static const double wideControlsLift = 72;
+  // Khối tìm kiếm + danh mục đè nhẹ lên mép dưới banner giống ảnh mẫu.
+  static const double verySmallPanelOverlap = 34;
+  static const double compactPanelOverlap = 42;
+  static const double widePanelOverlap = 44;
 }
 
 class _DesignedHomeHeader extends StatelessWidget {
@@ -392,22 +396,23 @@ class _DesignedHomeHeader extends StatelessWidget {
 
         // Luôn giữ đúng tỉ lệ hiển thị 750 x 500 của ảnh banner.
         final heroHeight = width / _HomeHeaderUiTuning.bannerAspectRatio;
-        final searchHeight = compact ? 44.0 : 58.0;
-        final categoryCardHeight = compact ? 184.0 : 126.0;
-        final controlsGap = compact ? 14.0 : 18.0;
-        final controlsInset = compact ? 16.0 : 36.0;
-        final controlsLift = verySmall
-            ? _HomeHeaderUiTuning.verySmallControlsLift
+        final quickPanelHeight = compact
+            ? (verySmall ? 286.0 : 314.0)
+            : 184.0;
+        final controlsInset = compact
+            ? (verySmall ? 12.0 : 16.0)
+            : 36.0;
+        final panelOverlap = verySmall
+            ? _HomeHeaderUiTuning.verySmallPanelOverlap
             : compact
-                ? _HomeHeaderUiTuning.compactControlsLift
-                : _HomeHeaderUiTuning.wideControlsLift;
+                ? _HomeHeaderUiTuning.compactPanelOverlap
+                : _HomeHeaderUiTuning.widePanelOverlap;
 
-        // Cả ô tìm kiếm và khối danh mục được đặt thành một cụm,
-        // sau đó nâng lên đúng vùng gạch màu cam trong ảnh mẫu.
-        final controlsTop = heroHeight - searchHeight - controlsLift;
-        final controlsHeight =
-            searchHeight + controlsGap + categoryCardHeight;
-        final totalHeight = controlsTop + controlsHeight + 18;
+        // Trong ảnh mẫu, toàn bộ ô tìm kiếm và bốn danh mục nằm trong cùng
+        // một thẻ trắng, chỉ đè nhẹ lên mép dưới của banner.
+        final controlsTop = heroHeight - panelOverlap;
+        final totalHeight =
+            controlsTop + quickPanelHeight + (compact ? 20.0 : 24.0);
         final horizontalMargin = (constraints.maxWidth - width) / 2;
 
         return SizedBox(
@@ -471,33 +476,78 @@ class _DesignedHomeHeader extends StatelessWidget {
                 top: controlsTop,
                 left: horizontalMargin + controlsInset,
                 width: width - (controlsInset * 2),
-                height: controlsHeight,
-                child: Column(
-                  children: [
-                    SizedBox(
-                      height: searchHeight,
-                      child: _HeroSearchPill(
-                        onTap: onSearch,
-                        compact: compact,
-                        verySmall: verySmall,
-                      ),
-                    ),
-                    SizedBox(height: controlsGap),
-                    SizedBox(
-                      height: categoryCardHeight,
-                      child: _QuickCategoryCard(
-                        compact: compact,
-                        selectedKind: selectedKind,
-                        onSelected: onCategorySelected,
-                      ),
-                    ),
-                  ],
+                height: quickPanelHeight,
+                child: _HomeQuickAccessPanel(
+                  compact: compact,
+                  verySmall: verySmall,
+                  onSearch: onSearch,
+                  selectedKind: selectedKind,
+                  onCategorySelected: onCategorySelected,
                 ),
               ),
             ],
           ),
         );
       },
+    );
+  }
+}
+
+class _HomeQuickAccessPanel extends StatelessWidget {
+  const _HomeQuickAccessPanel({
+    required this.compact,
+    required this.verySmall,
+    required this.onSearch,
+    required this.selectedKind,
+    required this.onCategorySelected,
+  });
+
+  final bool compact;
+  final bool verySmall;
+  final VoidCallback onSearch;
+  final ListingKind selectedKind;
+  final ValueChanged<ListingKind> onCategorySelected;
+
+  @override
+  Widget build(BuildContext context) {
+    final radius = compact ? 24.0 : 28.0;
+    final panelPadding = verySmall ? 12.0 : (compact ? 16.0 : 14.0);
+    final searchHeight = verySmall ? 44.0 : (compact ? 48.0 : 52.0);
+    final contentGap = verySmall ? 10.0 : 14.0;
+
+    return Material(
+      color: Colors.white,
+      elevation: 7,
+      shadowColor: const Color(0x26082457),
+      borderRadius: BorderRadius.circular(radius),
+      child: Container(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(radius),
+          border: Border.all(color: const Color(0xFFF0F3F8)),
+        ),
+        padding: EdgeInsets.all(panelPadding),
+        child: Column(
+          children: [
+            SizedBox(
+              height: searchHeight,
+              child: _HeroSearchPill(
+                onTap: onSearch,
+                compact: compact,
+                verySmall: verySmall,
+              ),
+            ),
+            SizedBox(height: contentGap),
+            Expanded(
+              child: _QuickCategoryCard(
+                compact: compact,
+                verySmall: verySmall,
+                selectedKind: selectedKind,
+                onSelected: onCategorySelected,
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
@@ -800,58 +850,53 @@ class _HeroSearchPill extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final radius = compact ? 17.0 : 20.0;
+
     return Material(
-      color: Colors.white.withValues(alpha: 0.96),
-      elevation: 5,
-      shadowColor: const Color(0x21082457),
-      borderRadius: BorderRadius.circular(compact ? 18 : 22),
+      color: const Color(0xFFF8FAFD),
+      borderRadius: BorderRadius.circular(radius),
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(compact ? 18 : 22),
-        child: SizedBox(
-          height: compact ? 44 : 58,
-          child: Padding(
-            padding: EdgeInsets.symmetric(horizontal: verySmall ? 14 : 18),
-            child: Row(
-              children: [
-                Icon(
-                  Icons.search_rounded,
-                  color: _HomePalette.navy,
-                  size: verySmall ? 25 : (compact ? 27 : 31),
-                ),
-                SizedBox(width: compact ? 10 : 13),
-                Expanded(
-                  child: Text(
-                    context.tr('Tìm bất động sản, nhà, đất, mặt bằng...'),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      color: _HomePalette.placeholder,
-                      fontSize: verySmall ? 12.5 : (compact ? 14 : 17),
-                      fontWeight: FontWeight.w500,
-                    ),
+        borderRadius: BorderRadius.circular(radius),
+        child: Container(
+          padding: EdgeInsets.symmetric(horizontal: verySmall ? 13 : 16),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(radius),
+            border: Border.all(color: const Color(0xFFDDE4EF)),
+          ),
+          child: Row(
+            children: [
+              Icon(
+                Icons.search_rounded,
+                color: _HomePalette.navy,
+                size: verySmall ? 23 : (compact ? 25 : 28),
+              ),
+              SizedBox(width: verySmall ? 8 : 11),
+              Expanded(
+                child: Text(
+                  context.tr('Tìm bất động sản, nhà, đất, mặt bằng...'),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: _HomePalette.placeholder,
+                    fontSize: verySmall ? 11.5 : (compact ? 13 : 16),
+                    fontWeight: FontWeight.w500,
                   ),
                 ),
-                Container(
-                  width: 1,
-                  height: compact ? 24 : 30,
-                  margin: EdgeInsets.symmetric(horizontal: compact ? 8 : 12),
-                  color: const Color(0xFFE3E8F0),
-                ),
-                Icon(
-                  Icons.tune_rounded,
-                  color: _HomePalette.primary,
-                  size: verySmall ? 23 : (compact ? 25 : 28),
-                ),
-              ],
-            ),
+              ),
+              SizedBox(width: verySmall ? 6 : 10),
+              Icon(
+                Icons.tune_rounded,
+                color: _HomePalette.navy,
+                size: verySmall ? 22 : (compact ? 24 : 27),
+              ),
+            ],
           ),
         ),
       ),
     );
   }
 }
-
 
 class _StickyHomeToolbar extends StatelessWidget {
   const _StickyHomeToolbar({
@@ -1004,11 +1049,13 @@ class _StickyToolbarIconButton extends StatelessWidget {
 class _QuickCategoryCard extends StatelessWidget {
   const _QuickCategoryCard({
     required this.compact,
+    required this.verySmall,
     required this.selectedKind,
     required this.onSelected,
   });
 
   final bool compact;
+  final bool verySmall;
   final ListingKind selectedKind;
   final ValueChanged<ListingKind> onSelected;
 
@@ -1017,104 +1064,100 @@ class _QuickCategoryCard extends StatelessWidget {
     final items = <_QuickCategoryData>[
       const _QuickCategoryData(
         label: 'Bán nhà',
+        subtitle: 'Nhà riêng, nhà phố, biệt thự...',
         icon: Icons.real_estate_agent_outlined,
         kind: ListingKind.houseSale,
       ),
       const _QuickCategoryData(
         label: 'Thuê nhà',
+        subtitle: 'Nhà nguyên căn, phòng trọ, chung cư...',
         icon: Icons.house_outlined,
         kind: ListingKind.houseRent,
       ),
       const _QuickCategoryData(
         label: 'Đất bán',
+        subtitle: 'Đất thổ cư, đất nền, đất nông nghiệp...',
         icon: Icons.location_on_outlined,
         kind: ListingKind.landSale,
       ),
       const _QuickCategoryData(
         label: 'Mặt bằng',
+        subtitle: 'Mặt bằng kinh doanh, văn phòng, kho xưởng...',
         icon: Icons.storefront_outlined,
         kind: ListingKind.premises,
       ),
     ];
 
-    return Material(
-      color: Colors.white,
-      elevation: 5,
-      shadowColor: const Color(0x17082457),
-      borderRadius: BorderRadius.circular(compact ? 22 : 26),
-      child: Padding(
-        padding: EdgeInsets.symmetric(
-          horizontal: compact ? 12 : 18,
-          vertical: compact ? 12 : 14,
-        ),
-        child: compact
-            ? Column(
-                children: [
-                  Expanded(
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: _QuickCategoryTile(
-                            data: items[0],
-                            compact: true,
-                            selected: selectedKind == items[0].kind,
-                            onTap: () => onSelected(items[0].kind),
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: _QuickCategoryTile(
-                            data: items[1],
-                            compact: true,
-                            selected: selectedKind == items[1].kind,
-                            onTap: () => onSelected(items[1].kind),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Expanded(
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: _QuickCategoryTile(
-                            data: items[2],
-                            compact: true,
-                            selected: selectedKind == items[2].kind,
-                            onTap: () => onSelected(items[2].kind),
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: _QuickCategoryTile(
-                            data: items[3],
-                            compact: true,
-                            selected: selectedKind == items[3].kind,
-                            onTap: () => onSelected(items[3].kind),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              )
-            : Row(
-                children: [
-                  for (var index = 0; index < items.length; index++) ...[
-                    if (index > 0) const SizedBox(width: 10),
-                    Expanded(
-                      child: _QuickCategoryTile(
-                        data: items[index],
-                        compact: false,
-                        selected: selectedKind == items[index].kind,
-                        onTap: () => onSelected(items[index].kind),
-                      ),
-                    ),
-                  ],
-                ],
+    final gap = verySmall ? 8.0 : (compact ? 12.0 : 10.0);
+
+    if (!compact) {
+      return Row(
+        children: [
+          for (var index = 0; index < items.length; index++) ...[
+            if (index > 0) SizedBox(width: gap),
+            Expanded(
+              child: _QuickCategoryTile(
+                data: items[index],
+                compact: false,
+                selected: selectedKind == items[index].kind,
+                onTap: () => onSelected(items[index].kind),
               ),
-      ),
+            ),
+          ],
+        ],
+      );
+    }
+
+    return Column(
+      children: [
+        Expanded(
+          child: Row(
+            children: [
+              Expanded(
+                child: _QuickCategoryTile(
+                  data: items[0],
+                  compact: true,
+                  selected: selectedKind == items[0].kind,
+                  onTap: () => onSelected(items[0].kind),
+                ),
+              ),
+              SizedBox(width: gap),
+              Expanded(
+                child: _QuickCategoryTile(
+                  data: items[1],
+                  compact: true,
+                  selected: selectedKind == items[1].kind,
+                  onTap: () => onSelected(items[1].kind),
+                ),
+              ),
+            ],
+          ),
+        ),
+        SizedBox(height: gap),
+        Expanded(
+          child: Row(
+            children: [
+              Expanded(
+                child: _QuickCategoryTile(
+                  data: items[2],
+                  compact: true,
+                  selected: selectedKind == items[2].kind,
+                  onTap: () => onSelected(items[2].kind),
+                ),
+              ),
+              SizedBox(width: gap),
+              Expanded(
+                child: _QuickCategoryTile(
+                  data: items[3],
+                  compact: true,
+                  selected: selectedKind == items[3].kind,
+                  onTap: () => onSelected(items[3].kind),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 }
@@ -1134,93 +1177,98 @@ class _QuickCategoryTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final tileColor = selected ? const Color(0xFFF3F8FF) : Colors.transparent;
-    final borderColor = selected ? const Color(0xFFBFD6FF) : Colors.transparent;
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final narrow = constraints.maxWidth < 150;
+        final tileRadius = compact ? 15.0 : 17.0;
+        final horizontalPadding = narrow ? 8.0 : (compact ? 10.0 : 12.0);
+        final verticalPadding = narrow ? 7.0 : 9.0;
+        final iconSize = narrow ? 34.0 : (compact ? 38.0 : 36.0);
+        final titleSize = narrow ? 12.0 : (compact ? 13.5 : 14.0);
+        final subtitleSize = narrow ? 8.8 : (compact ? 10.0 : 9.8);
 
-    return Material(
-      color: tileColor,
-      borderRadius: BorderRadius.circular(16),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(16),
-        child: Container(
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: borderColor),
-          ),
-          child: compact
-              ? Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
+        return Semantics(
+          selected: selected,
+          button: true,
+          label: context.tr(data.label),
+          child: Material(
+            color: selected ? const Color(0xFFF4F8FF) : Colors.white,
+            borderRadius: BorderRadius.circular(tileRadius),
+            child: InkWell(
+              onTap: onTap,
+              borderRadius: BorderRadius.circular(tileRadius),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 180),
+                curve: Curves.easeOut,
+                padding: EdgeInsets.symmetric(
+                  horizontal: horizontalPadding,
+                  vertical: verticalPadding,
+                ),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(tileRadius),
+                  border: Border.all(
+                    color: selected
+                        ? const Color(0xFFB7D2FF)
+                        : const Color(0xFFE0E7F0),
+                    width: selected ? 1.2 : 1,
+                  ),
+                ),
+                child: Row(
                   children: [
-                    _QuickCategoryIcon(icon: data.icon, compact: true),
-                    const SizedBox(height: 5),
-                    Text(
-                      context.tr(data.label),
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        color: _HomePalette.navy,
-                        fontSize: 14,
-                        fontWeight:
-                            selected ? FontWeight.w800 : FontWeight.w700,
+                    SizedBox(
+                      width: iconSize,
+                      height: iconSize,
+                      child: Icon(
+                        data.icon,
+                        color: _HomePalette.primary,
+                        size: iconSize,
                       ),
                     ),
-                  ],
-                )
-              : Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    _QuickCategoryIcon(icon: data.icon, compact: false),
-                    const SizedBox(width: 10),
-                    Flexible(
-                      child: Text(
-                        context.tr(data.label),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          color: _HomePalette.navy,
-                          fontSize: 16,
-                          fontWeight:
-                              selected ? FontWeight.w900 : FontWeight.w800,
-                        ),
+                    SizedBox(width: narrow ? 6 : 9),
+                    Expanded(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            context.tr(data.label),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              color: _HomePalette.navy,
+                              fontSize: titleSize,
+                              fontWeight: FontWeight.w800,
+                              height: 1.05,
+                            ),
+                          ),
+                          SizedBox(height: narrow ? 4 : 6),
+                          Text(
+                            context.tr(data.subtitle),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              color: _HomePalette.secondaryText,
+                              fontSize: subtitleSize,
+                              fontWeight: FontWeight.w500,
+                              height: 1.35,
+                            ),
+                          ),
+                        ],
                       ),
+                    ),
+                    SizedBox(width: narrow ? 1 : 3),
+                    Icon(
+                      Icons.chevron_right_rounded,
+                      color: _HomePalette.navy,
+                      size: narrow ? 16 : 18,
                     ),
                   ],
                 ),
-        ),
-      ),
-    );
-  }
-}
-
-class _QuickCategoryIcon extends StatelessWidget {
-  const _QuickCategoryIcon({required this.icon, required this.compact});
-
-  final IconData icon;
-  final bool compact;
-
-  @override
-  Widget build(BuildContext context) {
-    final size = compact ? 48.0 : 50.0;
-    return Container(
-      width: size,
-      height: size,
-      decoration: BoxDecoration(
-        color: _HomePalette.iconBackground,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x120866FF),
-            blurRadius: 12,
-            offset: Offset(0, 5),
+              ),
+            ),
           ),
-        ],
-      ),
-      alignment: Alignment.center,
-      child: Icon(
-        icon,
-        color: _HomePalette.primary,
-        size: compact ? 29 : 30,
-      ),
+        );
+      },
     );
   }
 }
@@ -1228,11 +1276,13 @@ class _QuickCategoryIcon extends StatelessWidget {
 class _QuickCategoryData {
   const _QuickCategoryData({
     required this.label,
+    required this.subtitle,
     required this.icon,
     required this.kind,
   });
 
   final String label;
+  final String subtitle;
   final IconData icon;
   final ListingKind kind;
 }

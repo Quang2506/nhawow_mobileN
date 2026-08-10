@@ -90,6 +90,14 @@ class AppLocalizations {
       'Thuê nhà': 'Homes for rent',
       'Đất bán': 'Land for sale',
       'Mặt bằng': 'Commercial',
+      'Nhà riêng, nhà phố, biệt thự...':
+          'Private homes, townhouses, villas...',
+      'Nhà nguyên căn, phòng trọ, chung cư...':
+          'Whole houses, rooms, apartments...',
+      'Đất thổ cư, đất nền, đất nông nghiệp...':
+          'Residential land, plots, farmland...',
+      'Mặt bằng kinh doanh, văn phòng, kho xưởng...':
+          'Retail spaces, offices, warehouses...',
       'Thông báo': 'Notifications',
       'Tin nhắn': 'Messages',
       'Chào buổi sáng': 'Good morning',
@@ -306,6 +314,16 @@ class AppLocalizations {
       'Chỉnh sửa': 'Edit',
       'Mở lại tin': 'Reopen listing',
       'Đóng tin': 'Close listing',
+      'Gia hạn Ghim Top': 'Extend Top pin',
+      'Tin đang Ghim Top': 'Listings pinned to Top',
+      '{count} tin': '{count} listings',
+      'Giá dịch vụ': 'Service price',
+      'Hệ thống sẽ ưu tiên dùng lượt Ghim Top miễn phí còn lại.':
+          'The system will use any remaining free Top-pin benefit first.',
+      'Bạn có chắc muốn đóng bài đăng này không?':
+          'Are you sure you want to close this listing?',
+      'Bạn có chắc muốn mở lại bài đăng này không? Bài đăng sẽ chuyển về trạng thái chờ duyệt.':
+          'Are you sure you want to reopen this listing? It will return to pending approval.',
       'Tạo tin bất động sản': 'Create property listing',
       'Chỉnh sửa tin bất động sản': 'Edit property listing',
       'Đang lưu thay đổi...': 'Saving changes...',
@@ -705,6 +723,10 @@ class AppLocalizations {
       'Thuê nhà': '出租住宅',
       'Đất bán': '土地出售',
       'Mặt bằng': '商业场地',
+      'Nhà riêng, nhà phố, biệt thự...': '独立住宅、联排住宅、别墅...',
+      'Nhà nguyên căn, phòng trọ, chung cư...': '整租住宅、房间、公寓...',
+      'Đất thổ cư, đất nền, đất nông nghiệp...': '住宅用地、地块、农业用地...',
+      'Mặt bằng kinh doanh, văn phòng, kho xưởng...': '商铺、办公室、仓库厂房...',
       'Thông báo': '通知',
       'Tin nhắn': '消息',
       'Chào buổi sáng': '早上好',
@@ -908,6 +930,15 @@ class AppLocalizations {
       'Chỉnh sửa': '编辑',
       'Mở lại tin': '重新开放',
       'Đóng tin': '关闭房源',
+      'Gia hạn Ghim Top': '延长置顶',
+      'Tin đang Ghim Top': '正在置顶的房源',
+      '{count} tin': '{count} 条',
+      'Giá dịch vụ': '服务价格',
+      'Hệ thống sẽ ưu tiên dùng lượt Ghim Top miễn phí còn lại.':
+          '系统将优先使用剩余的免费置顶权益。',
+      'Bạn có chắc muốn đóng bài đăng này không?': '确定要关闭这条房源吗？',
+      'Bạn có chắc muốn mở lại bài đăng này không? Bài đăng sẽ chuyển về trạng thái chờ duyệt.':
+          '确定要重新开启这条房源吗？房源将重新进入待审核状态。',
       'Tạo tin bất động sản': '创建房源',
       'Chỉnh sửa tin bất động sản': '编辑房源',
       'Đang lưu thay đổi...': '正在保存更改...',

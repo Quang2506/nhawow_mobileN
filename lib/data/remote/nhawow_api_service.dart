@@ -4,8 +4,19 @@ import '../../config/app_config.dart';
 import '../../models/models.dart';
 import '../../models/partner_models.dart';
 import '../../models/auth_models.dart';
+import '../../models/commerce_models.dart';
 import 'api_transport.dart';
 import 'api_transport_factory.dart';
+
+class PartnerPropertiesFetchResult {
+  const PartnerPropertiesFetchResult({
+    this.items = const <PropertyModel>[],
+    this.activeTopCount = 0,
+  });
+
+  final List<PropertyModel> items;
+  final int activeTopCount;
+}
 
 class NhaWowApiService {
   NhaWowApiService({ApiTransport? transport})
@@ -244,27 +255,68 @@ class NhaWowApiService {
     );
   }
 
-  Future<List<PropertyModel>> fetchPartnerProperties({
+  Future<PartnerPropertiesFetchResult> fetchPartnerProperties({
     required String language,
     int? cityId,
     int? wardId,
     String status = 'all',
+    String featureCode = '',
   }) async {
     final uri = AppConfig.buildApiUri('/partner/properties', {
       'cityId': cityId?.toString(),
       'wardId': wardId?.toString(),
       'status': status,
+      'feature': featureCode.trim().isEmpty ? null : featureCode.trim(),
       'lang': language,
     });
     final root = await _getEnvelope(uri);
     final data = _asMap(root['data']);
-    final items = data['items'];
-    if (items is! List) return const <PropertyModel>[];
-    return items
-        .whereType<Map>()
-        .map((item) => PropertyModel.fromJson(Map<String, dynamic>.from(item)))
-        .where((item) => item.id > 0)
-        .toList(growable: false);
+    final rawItems = data['items'];
+    final items = rawItems is List
+        ? rawItems
+            .whereType<Map>()
+            .map((item) => PropertyModel.fromJson(Map<String, dynamic>.from(item)))
+            .where((item) => item.id > 0)
+            .toList(growable: false)
+        : const <PropertyModel>[];
+    final rawActiveTopCount = data['activeTopCount'];
+    final activeTopCount = rawActiveTopCount is num
+        ? rawActiveTopCount.toInt()
+        : int.tryParse(rawActiveTopCount?.toString() ?? '') ?? 0;
+    return PartnerPropertiesFetchResult(
+      items: items,
+      activeTopCount: activeTopCount,
+    );
+  }
+
+  Future<String> closePartnerProperty({
+    required int propertyId,
+    required String language,
+  }) async {
+    final root = await _postEnvelope(
+      AppConfig.buildApiUri('/partner/properties/$propertyId/close', {
+        'lang': language,
+      }),
+      const <String, dynamic>{},
+    );
+    final data = _asMap(root['data']);
+    final message = (data['message'] ?? root['message'] ?? '').toString().trim();
+    return message.isEmpty ? 'Đã đóng tin.' : message;
+  }
+
+  Future<String> reopenPartnerProperty({
+    required int propertyId,
+    required String language,
+  }) async {
+    final root = await _postEnvelope(
+      AppConfig.buildApiUri('/partner/properties/$propertyId/reopen', {
+        'lang': language,
+      }),
+      const <String, dynamic>{},
+    );
+    final data = _asMap(root['data']);
+    final message = (data['message'] ?? root['message'] ?? '').toString().trim();
+    return message.isEmpty ? 'Đã mở lại tin.' : message;
   }
 
   Future<PartnerPropertyEditData> fetchPartnerPropertyForEdit({
@@ -751,6 +803,161 @@ class NhaWowApiService {
   double? _toNullableDouble(Object? value) {
     if (value is num) return value.toDouble();
     return double.tryParse(value?.toString() ?? '');
+  }
+
+  Future<List<NotificationModel>> fetchNotifications({
+    required String language,
+  }) async {
+    final root = await _getEnvelope(
+      AppConfig.buildApiUri('/notifications', {'lang': language}),
+    );
+    final data = _asMap(root['data']);
+    final rawItems = data['items'];
+    if (rawItems is! List) return const <NotificationModel>[];
+    return rawItems
+        .whereType<Map>()
+        .map((item) => NotificationModel.fromJson(Map<String, dynamic>.from(item)))
+        .where((item) => item.id > 0)
+        .toList(growable: false);
+  }
+
+  Future<int> fetchUnreadNotificationCount({
+    required String language,
+  }) async {
+    final root = await _getEnvelope(
+      AppConfig.buildApiUri('/notifications/summary', {'lang': language}),
+    );
+    final data = _asMap(root['data']);
+    final raw = data['unread'];
+    return raw is num ? raw.toInt() : int.tryParse('$raw') ?? 0;
+  }
+
+  Future<int> markNotificationRead({
+    required int notificationId,
+    required String language,
+  }) async {
+    final root = await _postEnvelope(
+      AppConfig.buildApiUri('/notifications/read', {'lang': language}),
+      <String, dynamic>{'id': notificationId},
+    );
+    final data = _asMap(root['data']);
+    final raw = data['unread'];
+    return raw is num ? raw.toInt() : int.tryParse('$raw') ?? 0;
+  }
+
+  Future<void> markAllNotificationsRead({required String language}) async {
+    await _postEnvelope(
+      AppConfig.buildApiUri('/notifications/read-all', {'lang': language}),
+      const <String, dynamic>{},
+    );
+  }
+
+  Future<MembershipOverviewModel> fetchMembershipOverview({
+    required String language,
+  }) async {
+    final root = await _getEnvelope(
+      AppConfig.buildApiUri('/membership', {'lang': language}),
+    );
+    return MembershipOverviewModel.fromJson(_asMap(root['data']));
+  }
+
+  Future<MembershipPurchaseResult> buyMembership({
+    required String planCode,
+    required String language,
+  }) async {
+    final root = await _postEnvelope(
+      AppConfig.buildApiUri('/membership/buy', {'lang': language}),
+      <String, dynamic>{'planCode': planCode},
+    );
+    final data = _asMap(root['data']);
+    final usageRaw = data['usage'];
+    final activeRaw = data['activeMembership'];
+    return MembershipPurchaseResult(
+      message: (root['message'] ?? '').toString(),
+      usage: usageRaw is Map
+          ? MembershipUsageModel.fromJson(Map<String, dynamic>.from(usageRaw))
+          : const MembershipUsageModel(),
+      activeMembership: activeRaw is Map
+          ? ActiveMembershipModel.fromJson(Map<String, dynamic>.from(activeRaw))
+          : null,
+    );
+  }
+
+  Future<AddonFeaturePurchaseResult> buyAddonFeature({
+    required int propertyId,
+    required String featureCode,
+    required bool useFreeTopBenefit,
+    required String language,
+  }) async {
+    final root = await _postEnvelope(
+      AppConfig.buildApiUri('/membership/buy-feature', {'lang': language}),
+      <String, dynamic>{
+        'propertyId': propertyId,
+        'featureCode': featureCode,
+        'useFreeTopBenefit': useFreeTopBenefit,
+      },
+    );
+    final data = _asMap(root['data']);
+    final usageRaw = data['usage'];
+    final rawPropertyId = data['propertyId'];
+    return AddonFeaturePurchaseResult(
+      message: (root['message'] ?? '').toString(),
+      usage: usageRaw is Map
+          ? MembershipUsageModel.fromJson(Map<String, dynamic>.from(usageRaw))
+          : const MembershipUsageModel(),
+      propertyId: rawPropertyId is num
+          ? rawPropertyId.toInt()
+          : int.tryParse(rawPropertyId?.toString() ?? '') ?? 0,
+      featureCode: (data['featureCode'] ?? '').toString(),
+      expiresAtUtc: parseApiDate(data['expiresAtUtc']),
+    );
+  }
+
+  Future<WalletOverviewModel> fetchWalletOverview({
+    required String language,
+  }) async {
+    final root = await _getEnvelope(
+      AppConfig.buildApiUri('/wallet', {'lang': language}),
+    );
+    return WalletOverviewModel.fromJson(_asMap(root['data']));
+  }
+
+  Future<WalletTopupCheckoutModel> createWalletTopup({
+    required double amount,
+    required String language,
+  }) async {
+    final root = await _postEnvelope(
+      AppConfig.buildApiUri('/wallet/topup', {'lang': language}),
+      <String, dynamic>{'amount': amount.round()},
+    );
+    return WalletTopupCheckoutModel.fromJson(
+      _asMap(root['data']),
+      message: (root['message'] ?? '').toString(),
+    );
+  }
+
+  Future<WalletTopupStatusModel> fetchWalletTopupStatus({
+    required int topupId,
+    required String language,
+  }) async {
+    final root = await _getEnvelope(
+      AppConfig.buildApiUri('/wallet/topup-status', {
+        'id': topupId.toString(),
+        'lang': language,
+      }),
+    );
+    return WalletTopupStatusModel.fromJson(_asMap(root['data']));
+  }
+
+  Future<String> cancelWalletTopup({
+    required int topupId,
+    required String language,
+  }) async {
+    final root = await _postEnvelope(
+      AppConfig.buildApiUri('/wallet/cancel-topup', {'lang': language}),
+      <String, dynamic>{'id': topupId},
+    );
+    return (root['message'] ?? '').toString();
   }
 
   Future<List<ConversationModel>> fetchChatConversations({

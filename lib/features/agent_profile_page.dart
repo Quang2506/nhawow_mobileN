@@ -118,9 +118,9 @@ class _AgentProfilePageState extends State<AgentProfilePage> {
       source.sort((a, b) => a.price.compareTo(b.price));
     } else if (_sortBy == 'price_desc') {
       source.sort((a, b) => b.price.compareTo(a.price));
-    } else {
-      source.sort((a, b) => b.id.compareTo(a.id));
     }
+    // Với newest, giữ nguyên thứ tự do Mobile API/web trả về để không làm mất
+    // ưu tiên tin nổi bật, hạng hội viên và thời gian làm mới.
     return source;
   }
 

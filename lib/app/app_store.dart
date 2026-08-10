@@ -8,19 +8,24 @@ import '../data/remote/nhawow_api_service.dart';
 import '../models/models.dart';
 import '../models/auth_models.dart';
 import '../models/partner_models.dart';
+import '../models/commerce_models.dart';
 
 class AppStore extends ChangeNotifier {
   AppStore()
       : _properties = <PropertyModel>[],
         _conversations = <ConversationModel>[],
-        _notifications = [...mockNotifications],
-        _transactions = [...mockTransactions];
+        _notifications = <NotificationModel>[],
+        _transactions = <WalletTransactionModel>[];
 
   final List<PropertyModel> _properties;
   final List<PropertyModel> _partnerProperties = <PropertyModel>[];
   final List<ConversationModel> _conversations;
   final List<NotificationModel> _notifications;
   final List<WalletTransactionModel> _transactions;
+  final List<WalletTopupModel> _walletTopups = <WalletTopupModel>[];
+  final List<MembershipPlanModel> _membershipPlans = <MembershipPlanModel>[];
+  final List<PostingPackageModel> _postingPackages = <PostingPackageModel>[];
+  final List<AddonFeatureModel> _addonFeatures = <AddonFeatureModel>[];
   static const int _homePageSize = 8;
   static const String _languagePreferenceKey = 'nhawow.language';
   static const String _authTokenPreferenceKey = 'nhawow.auth_token';
@@ -45,14 +50,25 @@ class AppStore extends ChangeNotifier {
   AppLanguage _language = AppLanguage.vietnamese;
   int _selectedTab = 0;
   int _refreshGeneration = 0;
-  double _walletBalance = 102000;
+  double _walletBalance = 0;
   String _membershipCode = 'FREE';
+  MembershipUsageModel _membershipUsage = const MembershipUsageModel();
+  ActiveMembershipModel? _activeMembership;
+  List<double> _walletAmountOptions = const <double>[];
+  bool _isLoadingNotifications = false;
+  bool _isLoadingMembership = false;
+  bool _isLoadingWallet = false;
+  String? _notificationError;
+  String? _membershipError;
+  String? _walletError;
+  int _unreadNotificationCount = 0;
   bool _isLoadingProperties = false;
   bool _isInitialized = false;
   bool _usingMockData = false;
   String? _propertyError;
   ApiLookups _lookups = const ApiLookups();
   PartnerFormLookups _partnerFormLookups = const PartnerFormLookups();
+  int _activeTopPropertyCount = 0;
   bool _isLoadingPartnerProperties = false;
   bool _isLoadingPartnerLookups = false;
   bool _isSubmittingPartnerProperty = false;
@@ -73,12 +89,21 @@ class AppStore extends ChangeNotifier {
   int get selectedTab => _selectedTab;
   double get walletBalance => _walletBalance;
   String get membershipCode => _membershipCode.isEmpty ? 'FREE' : _membershipCode;
+  MembershipUsageModel get membershipUsage => _membershipUsage;
+  ActiveMembershipModel? get activeMembership => _activeMembership;
+  bool get isLoadingNotifications => _isLoadingNotifications;
+  bool get isLoadingMembership => _isLoadingMembership;
+  bool get isLoadingWallet => _isLoadingWallet;
+  String? get notificationError => _notificationError;
+  String? get membershipError => _membershipError;
+  String? get walletError => _walletError;
   bool get isLoadingProperties => _isLoadingProperties;
   bool get isInitialized => _isInitialized;
   bool get usingMockData => _usingMockData;
   String? get propertyError => _propertyError;
   ApiLookups get lookups => _lookups;
   PartnerFormLookups get partnerFormLookups => _partnerFormLookups;
+  int get activeTopPropertyCount => _activeTopPropertyCount;
   bool get isLoadingPartnerProperties => _isLoadingPartnerProperties;
   bool get isLoadingPartnerLookups => _isLoadingPartnerLookups;
   bool get isSubmittingPartnerProperty => _isSubmittingPartnerProperty;
@@ -95,8 +120,13 @@ class AppStore extends ChangeNotifier {
   List<ConversationModel> get conversations => List.unmodifiable(_conversations);
   List<NotificationModel> get notifications => List.unmodifiable(_notifications);
   List<WalletTransactionModel> get transactions => List.unmodifiable(_transactions);
+  List<WalletTopupModel> get walletTopups => List.unmodifiable(_walletTopups);
+  List<MembershipPlanModel> get membershipPlans => List.unmodifiable(_membershipPlans);
+  List<PostingPackageModel> get postingPackages => List.unmodifiable(_postingPackages);
+  List<AddonFeatureModel> get addonFeatures => List.unmodifiable(_addonFeatures);
+  List<double> get walletAmountOptions => List.unmodifiable(_walletAmountOptions);
 
-  int get unreadNotificationCount => _notifications.where((item) => !item.isRead).length;
+  int get unreadNotificationCount => _unreadNotificationCount;
   int get unreadMessageCount => _conversations.fold<int>(
         0,
         (sum, item) => sum + item.unreadCount,
@@ -148,7 +178,10 @@ class AppStore extends ChangeNotifier {
 
     if (_hasLanguagePreference) {
       await refreshProperties();
-      if (isLoggedIn) await refreshConversations();
+      if (isLoggedIn) {
+        await refreshConversations();
+        await refreshCommerceData();
+      }
     }
   }
 
@@ -179,7 +212,10 @@ class AppStore extends ChangeNotifier {
         }
       }
       await refreshProperties(force: true);
-      if (isLoggedIn) await refreshConversations();
+      if (isLoggedIn) {
+        await refreshConversations();
+        await refreshCommerceData(force: true);
+      }
     }
   }
 
@@ -493,7 +529,10 @@ class AppStore extends ChangeNotifier {
         return;
       case 'newest':
       default:
-        results.sort(compareFeaturedThenNewest);
+        // API/web đã sắp xếp theo: tin nổi bật -> hạng hội viên ->
+        // thời gian làm mới -> id. Không sắp xếp lại ở app vì sẽ làm mất
+        // SortPriority của gói hội viên.
+        return;
     }
   }
 
@@ -562,21 +601,24 @@ class AppStore extends ChangeNotifier {
     int? cityId,
     int? wardId,
     String status = 'all',
+    String featureCode = '',
   }) async {
     if (!isLoggedIn || !isBroker || _isLoadingPartnerProperties) return;
     _isLoadingPartnerProperties = true;
     _partnerPropertyError = null;
     notifyListeners();
     try {
-      final items = await _api.fetchPartnerProperties(
+      final result = await _api.fetchPartnerProperties(
         language: apiLanguageCode,
         cityId: cityId,
         wardId: wardId,
         status: status,
+        featureCode: featureCode,
       );
+      _activeTopPropertyCount = result.activeTopCount;
       _partnerProperties
         ..clear()
-        ..addAll(items);
+        ..addAll(result.items);
     } on ApiTransportException catch (error) {
       _partnerPropertyError = error.toString();
       if (error.needLogin) await _clearAuthState();
@@ -695,7 +737,12 @@ class AppStore extends ChangeNotifier {
         request: request,
         language: apiLanguageCode,
       );
-      await refreshPartnerProperties();
+      await Future.wait<void>([
+        refreshPartnerProperties(),
+        refreshMembership(force: true),
+        refreshWallet(force: true),
+        refreshNotifications(force: true),
+      ]);
       return result;
     } on ApiTransportException catch (error) {
       _partnerPropertyError = error.toString();
@@ -710,18 +757,178 @@ class AppStore extends ChangeNotifier {
     }
   }
 
-  void markNotificationRead(int notificationId) {
-    final index = _notifications.indexWhere((item) => item.id == notificationId);
-    if (index < 0 || _notifications[index].isRead) return;
-    _notifications[index] = _notifications[index].copyWith(isRead: true);
+  Future<void> refreshNotifications({bool force = false}) async {
+    if (!isLoggedIn) {
+      _notifications.clear();
+      _unreadNotificationCount = 0;
+      _notificationError = null;
+      notifyListeners();
+      return;
+    }
+    if (_isLoadingNotifications && !force) return;
+    _isLoadingNotifications = true;
+    _notificationError = null;
     notifyListeners();
+    try {
+      final items = await _api.fetchNotifications(language: apiLanguageCode);
+      final unread = await _api.fetchUnreadNotificationCount(language: apiLanguageCode);
+      _notifications
+        ..clear()
+        ..addAll(items);
+      _unreadNotificationCount = unread;
+    } on ApiTransportException catch (error) {
+      _notificationError = error.toString();
+      if (error.needLogin) await _clearAuthState();
+    } catch (error) {
+      _notificationError = error.toString();
+    } finally {
+      _isLoadingNotifications = false;
+      notifyListeners();
+    }
   }
 
-  void markAllNotificationsRead() {
-    for (var i = 0; i < _notifications.length; i++) {
-      _notifications[i] = _notifications[i].copyWith(isRead: true);
+  Future<void> markNotificationRead(int notificationId) async {
+    final index = _notifications.indexWhere((item) => item.id == notificationId);
+    if (index < 0 || _notifications[index].isRead) return;
+    try {
+      final unread = await _api.markNotificationRead(
+        notificationId: notificationId,
+        language: apiLanguageCode,
+      );
+      _unreadNotificationCount = unread;
+      if (index < _notifications.length && _notifications[index].id == notificationId) {
+        _notifications[index] = _notifications[index].copyWith(
+          isRead: true,
+          readAt: DateTime.now().toUtc(),
+        );
+      }
+      notifyListeners();
+    } on ApiTransportException catch (error) {
+      _notificationError = error.toString();
+      if (error.needLogin) await _clearAuthState();
+      rethrow;
     }
+  }
+
+  Future<void> markAllNotificationsRead() async {
+    if (_notifications.every((item) => item.isRead)) return;
+    try {
+      await _api.markAllNotificationsRead(language: apiLanguageCode);
+      _unreadNotificationCount = 0;
+      final now = DateTime.now().toUtc();
+      for (var i = 0; i < _notifications.length; i++) {
+        _notifications[i] = _notifications[i].copyWith(isRead: true, readAt: now);
+      }
+      notifyListeners();
+    } on ApiTransportException catch (error) {
+      _notificationError = error.toString();
+      if (error.needLogin) await _clearAuthState();
+      rethrow;
+    }
+  }
+
+  Future<void> refreshMembership({bool force = false}) async {
+    if (!isLoggedIn) {
+      _membershipPlans.clear();
+      _postingPackages.clear();
+      _addonFeatures.clear();
+      _membershipUsage = const MembershipUsageModel();
+      _activeMembership = null;
+      _membershipCode = 'FREE';
+      _membershipError = null;
+      notifyListeners();
+      return;
+    }
+    if (_isLoadingMembership && !force) return;
+    _isLoadingMembership = true;
+    _membershipError = null;
     notifyListeners();
+    try {
+      final overview = await _api.fetchMembershipOverview(language: apiLanguageCode);
+      _membershipPlans
+        ..clear()
+        ..addAll(overview.plans);
+      _postingPackages
+        ..clear()
+        ..addAll(overview.postingPackages);
+      _addonFeatures
+        ..clear()
+        ..addAll(overview.addonFeatures);
+      _membershipUsage = overview.usage;
+      _activeMembership = overview.activeMembership;
+      _membershipCode = overview.usage.currentPlanCode.isEmpty
+          ? 'FREE'
+          : overview.usage.currentPlanCode.toUpperCase();
+      _walletBalance = overview.usage.walletBalance;
+    } on ApiTransportException catch (error) {
+      _membershipError = error.toString();
+      if (error.needLogin) await _clearAuthState();
+    } catch (error) {
+      _membershipError = error.toString();
+    } finally {
+      _isLoadingMembership = false;
+      notifyListeners();
+    }
+  }
+
+  Future<void> refreshWallet({bool force = false}) async {
+    if (!isLoggedIn) {
+      _walletBalance = 0;
+      _transactions.clear();
+      _walletTopups.clear();
+      _walletAmountOptions = const <double>[];
+      _walletError = null;
+      notifyListeners();
+      return;
+    }
+    if (_isLoadingWallet && !force) return;
+    _isLoadingWallet = true;
+    _walletError = null;
+    notifyListeners();
+    try {
+      final overview = await _api.fetchWalletOverview(language: apiLanguageCode);
+      _walletBalance = overview.balance;
+      _walletAmountOptions = overview.amountOptions;
+      _walletTopups
+        ..clear()
+        ..addAll(overview.topups);
+      _transactions
+        ..clear()
+        ..addAll(overview.transactions);
+    } on ApiTransportException catch (error) {
+      _walletError = error.toString();
+      if (error.needLogin) await _clearAuthState();
+    } catch (error) {
+      _walletError = error.toString();
+    } finally {
+      _isLoadingWallet = false;
+      notifyListeners();
+    }
+  }
+
+  Future<void> refreshCommerceData({bool force = false}) async {
+    if (!isLoggedIn) return;
+    await Future.wait<void>([
+      refreshNotifications(force: force),
+      refreshMembership(force: force),
+      refreshWallet(force: force),
+      preloadPartnerProperties(),
+    ]);
+  }
+
+  /// Tải trước danh sách tin của tài khoản để phần "Quản lý tin đăng"
+  /// hiển thị đúng số lượng ngay khi mở tab Tài khoản.
+  ///
+  /// Hàm này cố ý không ném lỗi ra ngoài vì đây là dữ liệu tóm tắt cho UI;
+  /// lỗi chi tiết vẫn được lưu trong [partnerPropertyError] và sẽ được màn
+  /// Quản lý tin đăng hiển thị khi người dùng mở trang đó.
+  Future<void> preloadPartnerProperties() async {
+    if (!isLoggedIn || !isBroker) return;
+    try {
+      await refreshPartnerProperties();
+    } catch (_) {
+      // Không làm hỏng luồng đăng nhập/khởi động nếu API tin đăng tạm lỗi.
+    }
   }
 
   Future<void> refreshConversations({bool force = false}) async {
@@ -1157,6 +1364,7 @@ class AppStore extends ChangeNotifier {
       await _applyAuthSession(session);
       await refreshProperties(force: true);
       await refreshConversations(force: true);
+      await refreshCommerceData(force: true);
     } catch (error) {
       _authError = error.toString();
       rethrow;
@@ -1201,6 +1409,7 @@ class AppStore extends ChangeNotifier {
     await _applyAuthSession(session);
     await refreshProperties(force: true);
     await refreshConversations(force: true);
+    await refreshCommerceData(force: true);
   }
 
   Future<int> resendVerifyOtp(String email) {
@@ -1341,7 +1550,22 @@ class AppStore extends ChangeNotifier {
     _authUser = null;
     _authError = null;
     _membershipCode = 'FREE';
+    _walletBalance = 0;
+    _membershipUsage = const MembershipUsageModel();
+    _activeMembership = null;
+    _membershipPlans.clear();
+    _postingPackages.clear();
+    _addonFeatures.clear();
+    _notifications.clear();
+    _unreadNotificationCount = 0;
+    _transactions.clear();
+    _walletTopups.clear();
+    _walletAmountOptions = const <double>[];
+    _notificationError = null;
+    _membershipError = null;
+    _walletError = null;
     _partnerProperties.clear();
+    _activeTopPropertyCount = 0;
     _conversations.clear();
     _chatError = null;
     _isLoadingConversations = false;
@@ -1357,24 +1581,112 @@ class AppStore extends ChangeNotifier {
     if (notify) notifyListeners();
   }
 
-  void buyMembership(String code) {
-    _membershipCode = code;
+  Future<String> buyMembership(String code) async {
+    if (!isLoggedIn) {
+      throw const ApiTransportException(
+        'Vui lòng đăng nhập để mua gói hội viên.',
+        code: 'AUTH_REQUIRED',
+      );
+    }
+    _isLoadingMembership = true;
+    _membershipError = null;
     notifyListeners();
+    try {
+      final result = await _api.buyMembership(
+        planCode: code,
+        language: apiLanguageCode,
+      );
+      _membershipUsage = result.usage;
+      _activeMembership = result.activeMembership;
+      _membershipCode = result.usage.currentPlanCode.isEmpty
+          ? code.toUpperCase()
+          : result.usage.currentPlanCode.toUpperCase();
+      _walletBalance = result.usage.walletBalance;
+      await Future.wait<void>([
+        refreshWallet(force: true),
+        refreshNotifications(force: true),
+      ]);
+      return result.message;
+    } on ApiTransportException catch (error) {
+      _membershipError = error.toString();
+      if (error.needLogin) await _clearAuthState();
+      rethrow;
+    } finally {
+      _isLoadingMembership = false;
+      notifyListeners();
+    }
   }
 
-  void topupWallet(double amount) {
-    if (amount <= 0) return;
-    _walletBalance += amount;
-    _transactions.insert(
-      0,
-      WalletTransactionModel(
-        id: DateTime.now().microsecondsSinceEpoch,
-        title: 'Nạp tiền qua QR',
-        amount: amount,
-        createdAt: DateTime.now(),
-      ),
+  Future<String> buyAddonFeature({
+    required int propertyId,
+    required String featureCode,
+    bool useFreeTopBenefit = true,
+  }) async {
+    if (!isLoggedIn) {
+      throw const ApiTransportException(
+        'Vui lòng đăng nhập để mua dịch vụ.',
+        code: 'AUTH_REQUIRED',
+      );
+    }
+    final result = await _api.buyAddonFeature(
+      propertyId: propertyId,
+      featureCode: featureCode,
+      useFreeTopBenefit: useFreeTopBenefit,
+      language: apiLanguageCode,
     );
-    notifyListeners();
+    _membershipUsage = result.usage;
+    _membershipCode = result.usage.currentPlanCode.isEmpty
+        ? _membershipCode
+        : result.usage.currentPlanCode.toUpperCase();
+    _walletBalance = result.usage.walletBalance;
+    await Future.wait<void>([
+      refreshWallet(force: true),
+      refreshNotifications(force: true),
+      refreshPartnerProperties(),
+    ]);
+    return result.message;
+  }
+
+  Future<WalletTopupCheckoutModel> createWalletTopup(double amount) async {
+    if (!isLoggedIn) {
+      throw const ApiTransportException(
+        'Vui lòng đăng nhập để nạp ví.',
+        code: 'AUTH_REQUIRED',
+      );
+    }
+    final result = await _api.createWalletTopup(
+      amount: amount,
+      language: apiLanguageCode,
+    );
+    await refreshWallet(force: true);
+    return result;
+  }
+
+  Future<WalletTopupStatusModel> checkWalletTopupStatus(int topupId) async {
+    final result = await _api.fetchWalletTopupStatus(
+      topupId: topupId,
+      language: apiLanguageCode,
+    );
+    _walletBalance = result.balance;
+    if (result.paid) {
+      await Future.wait<void>([
+        refreshWallet(force: true),
+        refreshMembership(force: true),
+        refreshNotifications(force: true),
+      ]);
+    } else {
+      notifyListeners();
+    }
+    return result;
+  }
+
+  Future<String> cancelWalletTopup(int topupId) async {
+    final message = await _api.cancelWalletTopup(
+      topupId: topupId,
+      language: apiLanguageCode,
+    );
+    await refreshWallet(force: true);
+    return message;
   }
 
   void addPartnerProperty({
@@ -1411,6 +1723,32 @@ class AppStore extends ChangeNotifier {
       ),
     );
     notifyListeners();
+  }
+
+  Future<String> closePartnerProperty(int propertyId) async {
+    if (!isLoggedIn || !isBroker) {
+      throw const ApiTransportException(
+        'Vui lòng đăng nhập để quản lý tin.',
+        code: 'AUTH_REQUIRED',
+      );
+    }
+    return _api.closePartnerProperty(
+      propertyId: propertyId,
+      language: apiLanguageCode,
+    );
+  }
+
+  Future<String> reopenPartnerProperty(int propertyId) async {
+    if (!isLoggedIn || !isBroker) {
+      throw const ApiTransportException(
+        'Vui lòng đăng nhập để quản lý tin.',
+        code: 'AUTH_REQUIRED',
+      );
+    }
+    return _api.reopenPartnerProperty(
+      propertyId: propertyId,
+      language: apiLanguageCode,
+    );
   }
 
   void changePropertyStatus(int propertyId, PropertyStatus status) {

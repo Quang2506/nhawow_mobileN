@@ -75,7 +75,12 @@ class _MainShellState extends State<MainShell> {
           });
         },
         onPost: () => _openPosting(store),
-        onAccount: () => store.setSelectedTab(3),
+        onAccount: () {
+          store.setSelectedTab(3);
+          // Làm mới số lượng tin ngay khi người dùng bấm tab Tài khoản.
+          // Không cần mở trang Quản lý tin đăng rồi quay lại mới thấy số thật.
+          store.preloadPartnerProperties();
+        },
       ),
     );
   }
