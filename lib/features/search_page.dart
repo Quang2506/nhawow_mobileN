@@ -7,6 +7,7 @@ import '../data/remote/api_transport.dart';
 import '../models/models.dart';
 import '../l10n/app_localizations.dart';
 import 'property_detail_page.dart';
+import 'property_sort_sheet.dart';
 
 class SearchPage extends StatefulWidget {
   const SearchPage({
@@ -29,11 +30,14 @@ class _SearchPageState extends State<SearchPage> {
   bool _isSearching = false;
   bool _hasSearched = false;
   String? _searchError;
+  late String _selectedSort;
 
   @override
   void initState() {
     super.initState();
     _filter = widget.initialFilter;
+    _selectedSort = _normalizeInitialSort(_filter.sortBy);
+    _filter = _filter.copyWith(sortBy: _apiSortFor(_selectedSort));
     _keywordController = TextEditingController(text: _filter.keyword);
   }
 
@@ -66,11 +70,14 @@ class _SearchPageState extends State<SearchPage> {
       _filter = _filter.copyWith(propertyType: selectedType);
     }
 
-    final visibleResults = _hasSearched
-        ? _results
-        : store.search(
-            _filter.copyWith(keyword: _keywordController.text.trim()),
-          );
+    final visibleResults = _sortVisibleResults(
+      _hasSearched
+          ? _results
+          : store.search(
+              _filter.copyWith(keyword: _keywordController.text.trim()),
+            ),
+      _selectedSort,
+    );
 
     return Scaffold(
       appBar: AppBar(
@@ -273,42 +280,7 @@ class _SearchPageState extends State<SearchPage> {
                 }),
               ),
               const SizedBox(height: 14),
-              DropdownButtonFormField<String>(
-                key: ValueKey<String>('sort:${_filter.sortBy}'),
-                initialValue: _filter.sortBy,
-                isExpanded: true,
-                decoration: InputDecoration(
-                  labelText: context.tr('Sắp xếp'),
-                  prefixIcon: const Icon(Icons.sort_rounded),
-                ),
-                items: const <(String, String)>[
-                  ('newest', 'Thời gian: Mới nhất'),
-                  ('oldest', 'Thời gian: Cũ nhất'),
-                  ('price_asc', 'Giá: Thấp đến cao'),
-                  ('price_desc', 'Giá: Cao đến thấp'),
-                ]
-                    .map(
-                      (item) => DropdownMenuItem<String>(
-                        value: item.$1,
-                        child: Text(
-                          context.tr(item.$2),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                    )
-                    .toList(growable: false),
-                onChanged: _isSearching
-                    ? null
-                    : (value) async {
-                        if (value == null || value == _filter.sortBy) return;
-                        setState(() {
-                          _filter = _filter.copyWith(sortBy: value);
-                        });
-                        await _runSearch();
-                      },
-              ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 4),
               FilledButton.icon(
                 onPressed: _isSearching ? null : _runSearch,
                 icon: _isSearching
@@ -344,7 +316,7 @@ class _SearchPageState extends State<SearchPage> {
                 ),
               ],
               const SizedBox(height: 24),
-              SectionHeader(
+              _SearchResultsHeader(
                 title: context.tr(
                   '{count} kết quả',
                   {'count': visibleResults.length},
@@ -352,6 +324,8 @@ class _SearchPageState extends State<SearchPage> {
                 subtitle: selectedCity == 'Tất cả'
                     ? context.tr('Tất cả khu vực')
                     : '${selectedWard == 'Tất cả' ? '' : '$selectedWard, '}$selectedCity',
+                sortBy: _selectedSort,
+                onSortTap: _isSearching ? () {} : _openSortSheet,
               ),
               const SizedBox(height: 12),
               if (!_isSearching && visibleResults.isEmpty)
@@ -378,6 +352,84 @@ class _SearchPageState extends State<SearchPage> {
         ),
       ),
     );
+  }
+
+  String _normalizeInitialSort(String value) {
+    final normalized = value.trim().toLowerCase();
+    if (normalized == 'price_asc' || normalized == 'price_desc') {
+      return normalized;
+    }
+    return 'relevant';
+  }
+
+  String _apiSortFor(String value) {
+    switch (value) {
+      case 'price_asc':
+      case 'price_desc':
+        return value;
+      case 'newest':
+      case 'relevant':
+      default:
+        // API hiện dùng "newest" cho thứ tự mặc định có Ghim Top / hội viên.
+        // Với lựa chọn "Mới nhất", app sẽ sắp lại theo id sau khi tải kết quả.
+        return 'newest';
+    }
+  }
+
+  List<PropertyModel> _sortVisibleResults(
+    List<PropertyModel> source,
+    String sortBy,
+  ) {
+    final results = source.toList(growable: true);
+
+    int compareDefault(PropertyModel a, PropertyModel b) {
+      if (a.isFeatured != b.isFeatured) return a.isFeatured ? -1 : 1;
+      final priority = b.sortPriority.compareTo(a.sortPriority);
+      if (priority != 0) return priority;
+      return b.id.compareTo(a.id);
+    }
+
+    switch (sortBy) {
+      case 'newest':
+        results.sort((a, b) => b.id.compareTo(a.id));
+        break;
+      case 'price_asc':
+        results.sort((a, b) {
+          final aMissing = a.price <= 0;
+          final bMissing = b.price <= 0;
+          if (aMissing != bMissing) return aMissing ? 1 : -1;
+          final compared = a.price.compareTo(b.price);
+          return compared != 0 ? compared : compareDefault(a, b);
+        });
+        break;
+      case 'price_desc':
+        results.sort((a, b) {
+          final aMissing = a.price <= 0;
+          final bMissing = b.price <= 0;
+          if (aMissing != bMissing) return aMissing ? 1 : -1;
+          final compared = b.price.compareTo(a.price);
+          return compared != 0 ? compared : compareDefault(a, b);
+        });
+        break;
+      case 'relevant':
+      default:
+        break;
+    }
+    return results;
+  }
+
+  Future<void> _openSortSheet() async {
+    final selected = await showPropertySortSheet(
+      context,
+      selectedValue: _selectedSort,
+    );
+    if (!mounted || selected == null || selected == _selectedSort) return;
+
+    setState(() {
+      _selectedSort = selected;
+      _filter = _filter.copyWith(sortBy: _apiSortFor(selected));
+    });
+    await _runSearch();
   }
 
   Future<void> _runSearch() async {
@@ -423,6 +475,7 @@ class _SearchPageState extends State<SearchPage> {
   Future<void> _resetAndSearch() async {
     _keywordController.clear();
     setState(() {
+      _selectedSort = 'relevant';
       _filter = const SearchFilterModel();
       _hasSearched = false;
       _searchError = null;
@@ -496,6 +549,59 @@ class _SearchPageState extends State<SearchPage> {
     }
     final sorted = names.toList()..sort();
     return <String>['Tất cả', ...sorted];
+  }
+}
+
+class _SearchResultsHeader extends StatelessWidget {
+  const _SearchResultsHeader({
+    required this.title,
+    required this.subtitle,
+    required this.sortBy,
+    required this.onSortTap,
+  });
+
+  final String title;
+  final String subtitle;
+  final String sortBy;
+  final VoidCallback onSortTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                style: const TextStyle(
+                  color: AppTheme.navy,
+                  fontSize: 21,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                subtitle,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(color: Colors.blueGrey.shade600),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(width: 10),
+        ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 170),
+          child: PropertySortButton(
+            value: sortBy,
+            onTap: onSortTap,
+          ),
+        ),
+      ],
+    );
   }
 }
 

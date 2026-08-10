@@ -10,6 +10,7 @@ import '../l10n/app_localizations.dart';
 import 'notifications_page.dart';
 import 'chat_inbox_page.dart';
 import 'property_detail_page.dart';
+import 'property_sort_sheet.dart';
 import 'search_page.dart';
 
 // Bảng màu riêng cho trang chủ, giúp toàn bộ phần banner và danh mục đồng nhất.
@@ -55,6 +56,7 @@ class _HomePageState extends State<HomePage> {
   bool _bottomSwitcherVisible = false;
   double? _bottomSwitcherActivationOffset;
   double _previousScrollOffset = 0;
+  String _sortBy = 'relevant';
 
   @override
   void initState() {
@@ -179,7 +181,8 @@ class _HomePageState extends State<HomePage> {
     final selectedKind = widget.selectedKind;
     final items = store.properties
         .where((item) => item.kind == selectedKind)
-        .toList(growable: false);
+        .toList(growable: true);
+    _sortHomeItems(items, _sortBy);
     final isLoadingMore = store.isLoadingMoreProperties(selectedKind);
     final hasMore = store.hasMoreProperties(selectedKind);
     _scheduleLoadMoreCheck();
@@ -256,11 +259,13 @@ class _HomePageState extends State<HomePage> {
                             const SizedBox(height: 14),
                           ],
                           const SizedBox(height: 18),
-                          SectionHeader(
+                          _HomeListingHeader(
                             title: context.tr(selectedKind.label),
                             subtitle: context.tr(
                               'Danh sách tin mới nhất từ hệ thống NhaWOW',
                             ),
+                            sortBy: _sortBy,
+                            onSortTap: _openHomeSortSheet,
                           ),
                           const SizedBox(height: 12),
                           PropertyGrid(
@@ -315,6 +320,52 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
+  Future<void> _openHomeSortSheet() async {
+    final selected = await showPropertySortSheet(
+      context,
+      selectedValue: _sortBy,
+    );
+    if (!mounted || selected == null || selected == _sortBy) return;
+    setState(() => _sortBy = selected);
+  }
+
+  void _sortHomeItems(List<PropertyModel> items, String sortBy) {
+    int compareRelevant(PropertyModel a, PropertyModel b) {
+      if (a.isFeatured != b.isFeatured) return a.isFeatured ? -1 : 1;
+      final priority = b.sortPriority.compareTo(a.sortPriority);
+      if (priority != 0) return priority;
+      return b.id.compareTo(a.id);
+    }
+
+    switch (sortBy) {
+      case 'newest':
+        items.sort((a, b) => b.id.compareTo(a.id));
+        break;
+      case 'price_asc':
+        items.sort((a, b) {
+          final aMissing = a.price <= 0;
+          final bMissing = b.price <= 0;
+          if (aMissing != bMissing) return aMissing ? 1 : -1;
+          final compared = a.price.compareTo(b.price);
+          return compared != 0 ? compared : compareRelevant(a, b);
+        });
+        break;
+      case 'price_desc':
+        items.sort((a, b) {
+          final aMissing = a.price <= 0;
+          final bMissing = b.price <= 0;
+          if (aMissing != bMissing) return aMissing ? 1 : -1;
+          final compared = b.price.compareTo(a.price);
+          return compared != 0 ? compared : compareRelevant(a, b);
+        });
+        break;
+      case 'relevant':
+      default:
+        // Giữ nguyên thứ tự API: Ghim Top / nổi bật -> hạng hội viên -> thời gian.
+        break;
+    }
+  }
+
   void _openSearch(
     BuildContext context,
     AppStore store, {
@@ -349,6 +400,63 @@ class _HomePageState extends State<HomePage> {
     store.setSelectedTab(3);
   }
 
+}
+
+class _HomeListingHeader extends StatelessWidget {
+  const _HomeListingHeader({
+    required this.title,
+    required this.subtitle,
+    required this.sortBy,
+    required this.onSortTap,
+  });
+
+  final String title;
+  final String subtitle;
+  final String sortBy;
+  final VoidCallback onSortTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                style: const TextStyle(
+                  color: _HomePalette.navy,
+                  fontSize: 21,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                subtitle,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  color: _HomePalette.secondaryText,
+                  fontSize: 13,
+                  height: 1.35,
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(width: 10),
+        ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 150),
+          child: PropertySortButton(
+            value: sortBy,
+            onTap: onSortTap,
+          ),
+        ),
+      ],
+    );
+  }
 }
 
 // Các thông số giao diện phần đầu trang chủ.

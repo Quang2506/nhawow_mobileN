@@ -13,6 +13,8 @@ import 'language_picker.dart';
 import 'login_page.dart';
 import 'membership_page.dart';
 import 'notifications_page.dart';
+import 'legal_info_page.dart';
+import 'service_intro_page.dart';
 import 'partner_properties_page.dart';
 import 'profile_page.dart';
 import 'wallet_page.dart';
@@ -408,6 +410,14 @@ class _LoggedInAccount extends StatelessWidget {
           ),
         ),
         _AccountMenuItem(
+          icon: Icons.menu_book_outlined,
+          title: 'Gói mua & dịch vụ',
+          subtitle: 'Xem bảng giá, quyền lợi hội viên và dịch vụ gia tăng',
+          onTap: () => Navigator.of(context).push(
+            MaterialPageRoute<void>(builder: (_) => const ServiceIntroPage()),
+          ),
+        ),
+        _AccountMenuItem(
           icon: Icons.account_balance_wallet_outlined,
           title: context.tr('Ví NhaWOW'),
           subtitle: context.tr(
@@ -461,6 +471,9 @@ class _LoggedInAccount extends StatelessWidget {
           icon: Icons.shield_outlined,
           title: context.tr('Điều khoản và quyền riêng tư'),
           subtitle: context.tr('Chính sách sử dụng nền tảng'),
+          onTap: () => Navigator.of(context).push(
+            MaterialPageRoute<void>(builder: (_) => const LegalInfoPage()),
+          ),
         ),
         const SizedBox(height: 14),
         SizedBox(
