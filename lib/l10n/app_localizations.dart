@@ -111,6 +111,9 @@ class AppLocalizations {
       'Tìm bất động sản...': 'Search properties...',
       'Khám phá không gian sống chân thực với trải nghiệm VR 360°.':
           'Explore realistic living spaces with immersive VR 360° tours.',
+      'Khám phá không gian sống chân thực':
+          'Explore realistic living spaces',
+      'với trải nghiệm VR 360°.': 'with immersive VR 360° tours.',
       'Danh sách tin mới nhất từ hệ thống NhaWOW':
           'Latest listings from the NhaWOW system',
       'Chưa kết nối được API PostgreSQL. Ứng dụng đang hiển thị dữ liệu mẫu.':
@@ -744,6 +747,8 @@ class AppLocalizations {
       'Tìm bất động sản...': '搜索房源…',
       'Khám phá không gian sống chân thực với trải nghiệm VR 360°.':
           '通过 VR 360° 沉浸式体验真实居住空间。',
+      'Khám phá không gian sống chân thực': '探索真实的居住空间',
+      'với trải nghiệm VR 360°.': '通过 VR 360° 沉浸式体验。',
       'Danh sách tin mới nhất từ hệ thống NhaWOW': 'NhaWOW 系统最新房源',
       'Chưa kết nối được API PostgreSQL. Ứng dụng đang hiển thị dữ liệu mẫu.':
           '无法连接 PostgreSQL API，应用正在显示示例数据。',

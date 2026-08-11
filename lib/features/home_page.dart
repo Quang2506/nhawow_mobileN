@@ -777,8 +777,9 @@ class _HeroForeground extends StatelessWidget {
                 ),
                 SizedBox(height: compact ? 5 : 8),
                 Text(
-                  context.tr('Khám phá không gian sống chân thực với trải nghiệm VR 360°.'),
-                  maxLines: verySmall ? 1 : (compact ? 2 : 3),
+                  '${context.tr('Khám phá không gian sống chân thực')}\n'
+                  '${context.tr('với trải nghiệm VR 360°.')}',
+                  maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
                     color: const Color(0xD1FFFFFF),
@@ -1174,24 +1175,28 @@ class _QuickCategoryCard extends StatelessWidget {
         label: 'Bán nhà',
         subtitle: 'Nhà riêng, nhà phố, biệt thự...',
         icon: Icons.real_estate_agent_outlined,
+        iconColor: Color(0xFF2F80ED),
         kind: ListingKind.houseSale,
       ),
       const _QuickCategoryData(
         label: 'Thuê nhà',
         subtitle: 'Nhà nguyên căn, phòng trọ, chung cư...',
         icon: Icons.house_outlined,
+        iconColor: Color(0xFF22C55E),
         kind: ListingKind.houseRent,
       ),
       const _QuickCategoryData(
         label: 'Đất bán',
         subtitle: 'Đất thổ cư, đất nền, đất nông nghiệp...',
         icon: Icons.location_on_outlined,
+        iconColor: Color(0xFFFF9F2D),
         kind: ListingKind.landSale,
       ),
       const _QuickCategoryData(
         label: 'Mặt bằng',
         subtitle: 'Mặt bằng kinh doanh, văn phòng, kho xưởng...',
         icon: Icons.storefront_outlined,
+        iconColor: Color(0xFF8B5CF6),
         kind: ListingKind.premises,
       ),
     ];
@@ -1328,7 +1333,7 @@ class _QuickCategoryTile extends StatelessWidget {
                       height: iconSize,
                       child: Icon(
                         data.icon,
-                        color: _HomePalette.primary,
+                        color: data.iconColor,
                         size: iconSize,
                       ),
                     ),
@@ -1386,12 +1391,14 @@ class _QuickCategoryData {
     required this.label,
     required this.subtitle,
     required this.icon,
+    required this.iconColor,
     required this.kind,
   });
 
   final String label;
   final String subtitle;
   final IconData icon;
+  final Color iconColor;
   final ListingKind kind;
 }
 
