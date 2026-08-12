@@ -178,10 +178,10 @@ class _PropertyDetailPageState extends State<PropertyDetailPage> {
             PageContainer(
               maxWidth: 1050,
               padding: EdgeInsets.fromLTRB(
-                isWide ? 14 : 18,
-                isWide ? 20 : 18,
-                isWide ? 14 : 18,
-                24,
+                isWide ? 18 : 20,
+                isWide ? 22 : 20,
+                isWide ? 18 : 20,
+                isWide ? 32 : 28,
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -191,82 +191,101 @@ class _PropertyDetailPageState extends State<PropertyDetailPage> {
                     const SizedBox(height: 14),
                   ],
                   Text(
-                    property.title,
+                    _normalizedDetailTitle(property.title),
                     style: TextStyle(
                       color: AppTheme.navy,
-                      fontSize: isWide ? 28 : 23,
-                      height: 1.24,
-                      fontWeight: FontWeight.w900,
+                      fontSize: isWide ? 26 : 25,
+                      height: 1.25,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: -0.28,
                     ),
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 10),
                   Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Padding(
-                        padding: const EdgeInsets.only(top: 2),
+                      const Padding(
+                        padding: EdgeInsets.only(top: 1.5),
                         child: Icon(
                           Icons.location_on_outlined,
-                          size: 19,
-                          color: Colors.blueGrey.shade700,
+                          size: 18,
+                          color: _detailSecondaryTextColor,
                         ),
                       ),
-                      const SizedBox(width: 6),
+                      const SizedBox(width: 8),
                       Expanded(
                         child: Text(
                           property.displayAddress,
-                          style: TextStyle(
-                            color: Colors.blueGrey.shade700,
-                            fontSize: 16,
-                            height: 1.35,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            color: _detailSecondaryTextColor,
+                            fontSize: 15.5,
+                            height: 1.4,
+                            fontWeight: FontWeight.w400,
                           ),
                         ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 18),
-                  const Divider(height: 1, color: Color(0xFFE8EDF2)),
-                  const SizedBox(height: 18),
+                  const SizedBox(height: 22),
+                  _SectionDivider(),
+                  const SizedBox(height: 22),
                   _DetailPriceSummary(property: property),
                   if (property.infoTags.isNotEmpty) ...[
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 18),
                     _ExpandableInfoTags(tags: property.infoTags),
                   ],
-                  const SizedBox(height: 18),
+                  const SizedBox(height: 24),
+                  const _SectionDivider(),
+                  const SizedBox(height: 24),
                   _BasicInformationSection(property: property),
-                  const SizedBox(height: 14),
+                  const SizedBox(height: 26),
+                  const _SectionDivider(),
+                  const SizedBox(height: 24),
                   _SectionCard(
                     title: context.tr('Tiện ích / Nội thất'),
                     icon: Icons.chair_alt_outlined,
                     child: property.amenities.isEmpty
                         ? Text(
                             context.tr('Chưa cập nhật'),
-                            style: const TextStyle(color: Colors.blueGrey),
+                            style: TextStyle(
+                              color: _detailSecondaryTextColor,
+                              fontSize: 15,
+                            ),
                           )
                         : Wrap(
-                            spacing: 9,
-                            runSpacing: 9,
+                            spacing: 10,
+                            runSpacing: 10,
                             children: property.amenities
                                 .map((item) => _AmenityChip(label: item))
                                 .toList(growable: false),
                           ),
                   ),
-                  const SizedBox(height: 14),
+                  const SizedBox(height: 26),
+                  const _SectionDivider(),
+                  const SizedBox(height: 24),
                   _SectionCard(
-                    title: context.tr('Thông tin mô tả'),
+                    title: context.tr('Mô tả'),
                     icon: Icons.subject_rounded,
                     child: _ExpandableDescription(
                       description: property.description,
                     ),
                   ),
-                  const SizedBox(height: 14),
+                  const SizedBox(height: 26),
+                  const _SectionDivider(),
+                  const SizedBox(height: 24),
                   _MapCard(property: property),
-                  const SizedBox(height: 14),
-                  if (isWide) _OwnerCard(property: property),
+                  const SizedBox(height: 26),
+                  const _SectionDivider(),
+                  const SizedBox(height: 24),
+                  _OwnerCard(property: property, showActions: isWide),
                   if (similar.isNotEmpty) ...[
                     const SizedBox(height: 28),
+                    const _SectionDivider(),
+                    const SizedBox(height: 24),
                     SectionHeader(title: context.tr('Bất động sản tương tự')),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 10),
                     PropertyGrid(
                       properties: similar,
                       onPropertyTap: (item) {
@@ -286,6 +305,48 @@ class _PropertyDetailPageState extends State<PropertyDetailPage> {
         ),
       ),
     );
+  }
+}
+
+
+const Color _detailSecondaryTextColor = Color(0xFF667085);
+const Color _detailDividerColor = Color(0xFFEEF2F6);
+const Color _detailMutedBackground = Color(0xFFF7F9FC);
+const Color _detailCardBackground = Color(0xFFF8FAFC);
+
+String _normalizedDetailTitle(String title) {
+  final normalized = title.trim().replaceAll(RegExp(r'\s+'), ' ');
+  if (normalized.isEmpty) return normalized;
+
+  final containsLetter = RegExp(r'[A-Za-zÀ-ỹ]').hasMatch(normalized);
+  final isAllCaps = containsLetter && normalized == normalized.toUpperCase();
+  if (!isAllCaps) return normalized;
+
+  final lower = normalized.toLowerCase();
+  return '${lower[0].toUpperCase()}${lower.substring(1)}';
+}
+
+IconData? _tagIconForLabel(String label) {
+  final value = label.trim().toLowerCase();
+  if (value.isEmpty || value == '...') return null;
+  if (value.contains('phòng ngủ') || value.contains(' pn')) return Icons.bed_rounded;
+  if (value.contains('wc') || value.contains('toilet') || value.contains('phòng tắm')) {
+    return Icons.bathtub_outlined;
+  }
+  if (value.contains('phòng thờ')) return Icons.self_improvement_rounded;
+  if (value.contains('phòng khách')) return Icons.weekend_outlined;
+  if (value.contains('tầng')) return Icons.apartment_rounded;
+  if (value.contains('ban công')) return Icons.deck_outlined;
+  if (value.contains('gara') || value.contains('ô tô')) return Icons.directions_car_outlined;
+  return null;
+}
+
+class _SectionDivider extends StatelessWidget {
+  const _SectionDivider();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Divider(height: 1, thickness: 1, color: _detailDividerColor);
   }
 }
 
@@ -312,8 +373,8 @@ class _HeaderActionButton extends StatelessWidget {
         padding: EdgeInsets.zero,
         visualDensity: VisualDensity.compact,
         constraints: const BoxConstraints.tightFor(
-          width: 42,
-          height: 42,
+          width: 40,
+          height: 40,
         ),
       );
     }
@@ -321,7 +382,7 @@ class _HeaderActionButton extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 8),
       child: Material(
-        color: Colors.black.withValues(alpha: 0.66),
+        color: Colors.black.withValues(alpha: 0.52),
         elevation: 0,
         shape: const CircleBorder(),
         clipBehavior: Clip.antiAlias,
@@ -334,8 +395,8 @@ class _HeaderActionButton extends StatelessWidget {
             padding: EdgeInsets.zero,
             visualDensity: VisualDensity.compact,
             constraints: const BoxConstraints.tightFor(
-              width: 44,
-              height: 44,
+              width: 40,
+              height: 40,
             ),
           ),
         ),
@@ -441,7 +502,7 @@ class _DetailPriceSummary extends StatelessWidget {
     final pricePerSquareMeter = _detailPricePerSquareMeter(context, property);
 
     return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.end,
       children: [
         Expanded(
           child: Column(
@@ -453,10 +514,10 @@ class _DetailPriceSummary extends StatelessWidget {
                 overflow: TextOverflow.ellipsis,
                 style: const TextStyle(
                   color: _priceColor,
-                  fontSize: 31,
-                  height: 1.05,
-                  fontWeight: FontWeight.w900,
-                  letterSpacing: -0.5,
+                  fontSize: 29,
+                  height: 1.08,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: -0.35,
                 ),
               ),
               if (pricePerSquareMeter.isNotEmpty) ...[
@@ -467,51 +528,35 @@ class _DetailPriceSummary extends StatelessWidget {
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
                     color: _priceColor,
-                    fontSize: 17,
-                    height: 1.15,
-                    fontWeight: FontWeight.w800,
+                    fontSize: 15,
+                    height: 1.18,
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
               ],
             ],
           ),
         ),
-        const SizedBox(width: 14),
+        const SizedBox(width: 16),
         Padding(
-          padding: const EdgeInsets.only(top: 3),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
+          padding: const EdgeInsets.only(bottom: 2),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
             children: [
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Icon(
-                    Icons.visibility_outlined,
-                    size: 18,
-                    color: Colors.blueGrey,
-                  ),
-                  const SizedBox(width: 5),
-                  Text(
-                    property.compactViewCount,
-                    maxLines: 1,
-                    style: const TextStyle(
-                      color: AppTheme.navy,
-                      fontSize: 18,
-                      height: 1.05,
-                      fontWeight: FontWeight.w900,
-                      letterSpacing: -0.1,
-                    ),
-                  ),
-                ],
+              const Icon(
+                Icons.visibility_outlined,
+                size: 17,
+                color: _detailSecondaryTextColor,
               ),
-              const SizedBox(height: 4),
+              const SizedBox(width: 5),
               Text(
-                context.tr('lượt xem'),
-                style: TextStyle(
-                  color: Colors.blueGrey,
-                  fontSize: 12.5,
-                  height: 1.1,
-                  fontWeight: FontWeight.w600,
+                "${property.compactViewCount} ${context.tr('lượt xem')}",
+                maxLines: 1,
+                style: const TextStyle(
+                  color: _detailSecondaryTextColor,
+                  fontSize: 13.5,
+                  height: 1.2,
+                  fontWeight: FontWeight.w500,
                 ),
               ),
             ],
@@ -533,11 +578,12 @@ class _ExpandableInfoTags extends StatefulWidget {
 
 class _ExpandableInfoTagsState extends State<_ExpandableInfoTags> {
   static const double _spacing = 8;
-  static const double _moreWidth = 42;
+  static const double _moreWidth = 44;
   static const TextStyle _tagTextStyle = TextStyle(
     color: AppTheme.navy,
-    fontSize: 13,
-    fontWeight: FontWeight.w700,
+    fontSize: 13.5,
+    height: 1.1,
+    fontWeight: FontWeight.w600,
   );
 
   bool _expanded = false;
@@ -669,7 +715,7 @@ class _ExpandableInfoTagsState extends State<_ExpandableInfoTags> {
       maxLines: 1,
     )..layout();
 
-    return painter.width + 24;
+    return painter.width + 32;
   }
 }
 
@@ -681,37 +727,45 @@ class _RoomTagPill extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final labelWidget = Text(
-      label,
-      maxLines: 1,
-      softWrap: false,
-      overflow: TextOverflow.ellipsis,
-      style: _ExpandableInfoTagsState._tagTextStyle,
-    );
+    final leadingIcon = trailingIcon == null ? _tagIconForLabel(label) : null;
 
     return Container(
-      height: 34,
-      padding: const EdgeInsets.symmetric(horizontal: 11),
+      height: 40,
+      padding: const EdgeInsets.symmetric(horizontal: 12),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: const Color(0xFFD9E1EA)),
+        color: _detailMutedBackground,
+        borderRadius: BorderRadius.circular(12),
       ),
-      alignment: Alignment.center,
-      child: trailingIcon == null
-          ? labelWidget
-          : Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                labelWidget,
-                const SizedBox(width: 3),
-                Icon(
-                  trailingIcon,
-                  size: 17,
-                  color: AppTheme.primaryDark,
-                ),
-              ],
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (leadingIcon != null) ...[
+            Icon(
+              leadingIcon,
+              size: 16,
+              color: AppTheme.primaryDark,
             ),
+            const SizedBox(width: 6),
+          ],
+          Flexible(
+            child: Text(
+              label,
+              maxLines: 1,
+              softWrap: false,
+              overflow: TextOverflow.ellipsis,
+              style: _ExpandableInfoTagsState._tagTextStyle,
+            ),
+          ),
+          if (trailingIcon != null) ...[
+            const SizedBox(width: 4),
+            Icon(
+              trailingIcon,
+              size: 16,
+              color: AppTheme.primaryDark,
+            ),
+          ],
+        ],
+      ),
     );
   }
 }
@@ -774,19 +828,33 @@ class _PropertyGalleryState extends State<_PropertyGallery> {
               ),
             ),
           ),
+          if (urls.length > 1)
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: 14,
+              child: IgnorePointer(
+                child: Center(
+                  child: _GalleryPageIndicator(
+                    currentIndex: _index,
+                    itemCount: urls.length,
+                  ),
+                ),
+              ),
+            ),
           Positioned(
             right: 12,
             bottom: 12,
             child: Material(
-              color: Colors.black.withValues(alpha: 0.66),
-              borderRadius: BorderRadius.circular(9),
+              color: Colors.black.withValues(alpha: 0.52),
+              borderRadius: BorderRadius.circular(10),
               child: InkWell(
                 onTap: () => _openPreview(context, urls, _index),
-                borderRadius: BorderRadius.circular(9),
+                borderRadius: BorderRadius.circular(10),
                 child: Padding(
                   padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 7,
+                    horizontal: 9,
+                    vertical: 6,
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
@@ -794,15 +862,15 @@ class _PropertyGalleryState extends State<_PropertyGallery> {
                       const Icon(
                         Icons.photo_library_outlined,
                         color: Colors.white,
-                        size: 19,
+                        size: 16,
                       ),
-                      const SizedBox(width: 7),
+                      const SizedBox(width: 6),
                       Text(
                         '${_index + 1}/${urls.length}',
                         style: const TextStyle(
                           color: Colors.white,
-                          fontSize: 15,
-                          fontWeight: FontWeight.w800,
+                          fontSize: 13.5,
+                          fontWeight: FontWeight.w700,
                         ),
                       ),
                     ],
@@ -943,7 +1011,7 @@ class _FullScreenGalleryPageState extends State<_FullScreenGalleryPage> {
                       '${_index + 1}/${widget.imageUrls.length}',
                       style: const TextStyle(
                         color: Colors.white,
-                        fontWeight: FontWeight.w800,
+                        fontWeight: FontWeight.w700,
                       ),
                     ),
                   ),
@@ -1403,7 +1471,7 @@ class _InformationGrid extends StatelessWidget {
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        const spacing = 10.0;
+        const spacing = 12.0;
         final columns = constraints.maxWidth >= 760 ? 3 : 2;
         final itemWidth =
             (constraints.maxWidth - spacing * (columns - 1)) / columns;
@@ -1445,28 +1513,23 @@ class _InformationItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: 62,
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      constraints: const BoxConstraints(minHeight: 74),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       decoration: BoxDecoration(
-        color: const Color(0xFFF6F8FB),
+        color: _detailCardBackground,
         borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0xFFEAF0F6)),
       ),
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            width: 30,
-            height: 30,
-            decoration: BoxDecoration(
-              color: const Color(0xFFE8F5FF),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Icon(data.icon, size: 17, color: AppTheme.primaryDark),
+          Padding(
+            padding: const EdgeInsets.only(top: 1),
+            child: Icon(data.icon, size: 18, color: AppTheme.primaryDark),
           ),
-          const SizedBox(width: 8),
+          const SizedBox(width: 10),
           Expanded(
             child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
@@ -1474,21 +1537,21 @@ class _InformationItem extends StatelessWidget {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
-                    color: Colors.blueGrey,
-                    fontSize: 11,
-                    height: 1.1,
+                    color: _detailSecondaryTextColor,
+                    fontSize: 12,
+                    height: 1.2,
                   ),
                 ),
-                const SizedBox(height: 3),
+                const SizedBox(height: 5),
                 Text(
                   context.tr(data.value),
-                  maxLines: 1,
+                  maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
                     color: AppTheme.navy,
-                    fontSize: 13,
-                    fontWeight: FontWeight.w800,
-                    height: 1.15,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                    height: 1.25,
                   ),
                 ),
               ],
@@ -1515,47 +1578,43 @@ class _SectionCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return SizedBox(
       width: double.infinity,
-      child: Card(
-        child: Padding(
-          padding: const EdgeInsets.all(17),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
             children: [
-              Row(
-                children: [
-                  if (icon != null) ...[
-                    Container(
-                      width: 36,
-                      height: 36,
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFE8F5FF),
-                        borderRadius: BorderRadius.circular(11),
-                      ),
-                      child: Icon(
-                        icon,
-                        size: 20,
-                        color: AppTheme.primaryDark,
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                  ],
-                  Expanded(
-                    child: Text(
-                      title,
-                      style: const TextStyle(
-                        color: AppTheme.navy,
-                        fontSize: 18,
-                        fontWeight: FontWeight.w900,
-                      ),
-                    ),
+              if (icon != null) ...[
+                Container(
+                  width: 34,
+                  height: 34,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFEAF3FF),
+                    borderRadius: BorderRadius.circular(11),
                   ),
-                ],
+                  child: Icon(
+                    icon,
+                    size: 19,
+                    color: AppTheme.primaryDark,
+                  ),
+                ),
+                const SizedBox(width: 10),
+              ],
+              Expanded(
+                child: Text(
+                  title,
+                  style: const TextStyle(
+                    color: AppTheme.navy,
+                    fontSize: 18,
+                    height: 1.2,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
               ),
-              const SizedBox(height: 14),
-              child,
             ],
           ),
-        ),
+          const SizedBox(height: 14),
+          child,
+        ],
       ),
     );
   }
@@ -1627,23 +1686,44 @@ class _AmenityChip extends StatelessWidget {
     final displayLabel = _localizedAmenityLabel(context, label);
     final asset = AppAssets.amenityIcon(displayLabel);
 
-    return Chip(
-      avatar: asset == null
-          ? const Icon(
-              Icons.check_circle_outline,
-              size: 18,
-              color: AppTheme.primaryDark,
-            )
-          : Padding(
-              padding: const EdgeInsets.all(1),
-              child: Image.asset(
-                asset,
-                width: 20,
-                height: 20,
-                fit: BoxFit.contain,
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: _detailMutedBackground,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          asset == null
+              ? const Icon(
+                  Icons.check_circle_outline,
+                  size: 17,
+                  color: AppTheme.primaryDark,
+                )
+              : Padding(
+                  padding: const EdgeInsets.all(1),
+                  child: Image.asset(
+                    asset,
+                    width: 18,
+                    height: 18,
+                    fit: BoxFit.contain,
+                  ),
+                ),
+          const SizedBox(width: 7),
+          Flexible(
+            child: Text(
+              displayLabel,
+              style: const TextStyle(
+                color: AppTheme.navy,
+                fontSize: 13.5,
+                height: 1.15,
+                fontWeight: FontWeight.w600,
               ),
             ),
-      label: Text(displayLabel),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -1727,7 +1807,7 @@ class _ExpandableDescriptionState extends State<_ExpandableDescription> {
                     style: TextButton.styleFrom(
                       foregroundColor: AppTheme.primaryDark,
                       textStyle: const TextStyle(
-                        fontWeight: FontWeight.w800,
+                        fontWeight: FontWeight.w700,
                       ),
                       visualDensity: VisualDensity.compact,
                     ),
@@ -2218,9 +2298,9 @@ class _WebStyleSectionTitle extends StatelessWidget {
             title,
             style: const TextStyle(
               color: Color(0xFF172B43),
-              fontSize: 17,
-              height: 1.1,
-              fontWeight: FontWeight.w900,
+              fontSize: 16,
+              height: 1.2,
+              fontWeight: FontWeight.w700,
             ),
           ),
         ),
@@ -2265,7 +2345,7 @@ class _MapPlaceOverlay extends StatelessWidget {
                     style: const TextStyle(
                       color: Color(0xFF263238),
                       fontSize: 14,
-                      fontWeight: FontWeight.w800,
+                      fontWeight: FontWeight.w700,
                     ),
                   ),
                   if (subtitle.trim().isNotEmpty) ...[
@@ -2461,94 +2541,103 @@ String _mapPlaceTitle(PropertyModel property) {
 }
 
 class _OwnerCard extends StatelessWidget {
-  const _OwnerCard({required this.property});
+  const _OwnerCard({required this.property, this.showActions = true});
 
   final PropertyModel property;
+  final bool showActions;
 
   @override
   Widget build(BuildContext context) {
     final owner = property.owner;
-    return SizedBox(
-      width: double.infinity,
-      child: Card(
-        margin: EdgeInsets.zero,
-        child: Padding(
-          padding: const EdgeInsets.all(18),
-          child: Column(
-            children: [
-              InkWell(
-                borderRadius: BorderRadius.circular(12),
-                onTap: () {
-                  Navigator.of(context).push(
-                    MaterialPageRoute<void>(
-                      builder: (_) => AgentProfilePage(agent: owner),
-                    ),
-                  );
-                },
-                child: Row(
-                  children: [
-                    AppAvatar(
-                      url: owner.avatarUrl,
-                      fallbackText: owner.name,
-                      radius: 31,
-                    ),
-                    const SizedBox(width: 14),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            owner.name,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                              color: AppTheme.navy,
-                              fontSize: 17,
-                              fontWeight: FontWeight.w900,
-                            ),
+    return _SectionCard(
+      title: context.tr('Người đăng'),
+      icon: Icons.person_outline_rounded,
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: _detailCardBackground,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: const Color(0xFFEAF0F6)),
+        ),
+        child: Column(
+          children: [
+            InkWell(
+              borderRadius: BorderRadius.circular(12),
+              onTap: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute<void>(
+                    builder: (_) => AgentProfilePage(agent: owner),
+                  ),
+                );
+              },
+              child: Row(
+                children: [
+                  AppAvatar(
+                    url: owner.avatarUrl,
+                    fallbackText: owner.name,
+                    radius: 28,
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          owner.name,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            color: AppTheme.navy,
+                            fontSize: 16,
+                            height: 1.2,
+                            fontWeight: FontWeight.w700,
                           ),
-                          const SizedBox(height: 6),
-                          AgentLevelBadge(agent: owner, compact: true),
-                          if (property.updatedAgoText.trim().isNotEmpty) ...[
-                            const SizedBox(height: 6),
-                            Row(
-                              children: [
-                                const Icon(
-                                  Icons.schedule_rounded,
-                                  size: 14,
-                                  color: Colors.blueGrey,
-                                ),
-                                const SizedBox(width: 4),
-                                Expanded(
-                                  child: Text(
-                                    property.updatedAgoText,
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: const TextStyle(
-                                      color: Colors.blueGrey,
-                                      fontSize: 12,
-                                    ),
+                        ),
+                        const SizedBox(height: 6),
+                        AgentLevelBadge(agent: owner, compact: true),
+                        if (property.updatedAgoText.trim().isNotEmpty) ...[
+                          const SizedBox(height: 8),
+                          Row(
+                            children: [
+                              const Icon(
+                                Icons.schedule_rounded,
+                                size: 14,
+                                color: _detailSecondaryTextColor,
+                              ),
+                              const SizedBox(width: 5),
+                              Expanded(
+                                child: Text(
+                                  property.updatedAgoText,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(
+                                    color: _detailSecondaryTextColor,
+                                    fontSize: 12.5,
+                                    height: 1.2,
                                   ),
                                 ),
-                              ],
-                            ),
-                          ],
-                        ],
-                      ),
-                    ),
-                    TextButton(
-                      onPressed: () {
-                        Navigator.of(context).push(
-                          MaterialPageRoute<void>(
-                            builder: (_) => AgentProfilePage(agent: owner),
+                              ),
+                            ],
                           ),
-                        );
-                      },
-                      child: Text(context.tr('Xem hồ sơ')),
+                        ],
+                      ],
                     ),
-                  ],
-                ),
+                  ),
+                  TextButton(
+                    onPressed: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute<void>(
+                          builder: (_) => AgentProfilePage(agent: owner),
+                        ),
+                      );
+                    },
+                    child: Text(context.tr('Xem hồ sơ')),
+                  ),
+                ],
               ),
+            ),
+            if (showActions) ...[
               const SizedBox(height: 14),
               Row(
                 children: [
@@ -2557,10 +2646,155 @@ class _OwnerCard extends StatelessWidget {
                       backgroundColor: const Color(0xFF18A84B),
                       foregroundColor: Colors.white,
                       icon: Icons.phone_rounded,
-                      label: AppScope.of(context).isLoggedIn &&
-                              owner.phone.trim().isNotEmpty
-                          ? owner.phone.trim()
-                          : context.tr('Xem số điện thoại'),
+                      label: context.tr('Gọi điện'),
+                      onPressed: () => _callPropertyOwner(context, property),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: _BottomContactAction(
+                      backgroundColor: const Color(0xFF1697F6),
+                      foregroundColor: Colors.white,
+                      icon: Icons.forum_rounded,
+                      label: context.tr('Nhắn tin'),
+                      onPressed: () => _openPropertyChat(context, property),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _GalleryPageIndicator extends StatelessWidget {
+  const _GalleryPageIndicator({
+    required this.currentIndex,
+    required this.itemCount,
+  });
+
+  final int currentIndex;
+  final int itemCount;
+
+  @override
+  Widget build(BuildContext context) {
+    const maxVisibleItems = 7;
+    final visibleCount = itemCount > maxVisibleItems ? maxVisibleItems : itemCount;
+    final maxStart = itemCount - visibleCount;
+    final preferredStart = currentIndex - (visibleCount ~/ 2);
+    final startIndex = preferredStart.clamp(0, maxStart);
+
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: List<Widget>.generate(visibleCount, (position) {
+        final imageIndex = startIndex + position;
+        final isActive = imageIndex == currentIndex;
+        final isEdgeOverflow = itemCount > visibleCount &&
+            ((position == 0 && startIndex > 0) ||
+                (position == visibleCount - 1 &&
+                    startIndex + visibleCount < itemCount));
+
+        return AnimatedContainer(
+          duration: const Duration(milliseconds: 180),
+          curve: Curves.easeOutCubic,
+          width: isActive ? 20 : (isEdgeOverflow ? 4 : 5),
+          height: 4,
+          margin: const EdgeInsets.symmetric(horizontal: 2.5),
+          decoration: BoxDecoration(
+            color: isActive
+                ? AppTheme.primaryDark
+                : const Color(0xFFC9D3DE),
+            borderRadius: BorderRadius.circular(99),
+          ),
+        );
+      }),
+    );
+  }
+}
+
+class _ContactBar extends StatelessWidget {
+  const _ContactBar({required this.property});
+
+  final PropertyModel property;
+
+  @override
+  Widget build(BuildContext context) {
+    final owner = property.owner;
+
+    return SafeArea(
+      top: false,
+      child: Material(
+        color: Colors.white,
+        elevation: 18,
+        shadowColor: const Color(0x22000000),
+        child: Container(
+          padding: const EdgeInsets.fromLTRB(16, 10, 16, 12),
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            border: Border(top: BorderSide(color: Color(0xFFE7EDF4))),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              InkWell(
+                borderRadius: BorderRadius.circular(14),
+                onTap: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute<void>(
+                      builder: (_) => AgentProfilePage(agent: owner),
+                    ),
+                  );
+                },
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 2),
+                  child: Row(
+                    children: [
+                      AppAvatar(
+                        url: owner.avatarUrl,
+                        fallbackText: owner.name,
+                        radius: 22,
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              owner.name,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                color: AppTheme.navy,
+                                fontSize: 15.5,
+                                height: 1.2,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                            const SizedBox(height: 5),
+                            AgentLevelBadge(agent: owner, compact: true),
+                          ],
+                        ),
+                      ),
+                      const Icon(
+                        Icons.chevron_right_rounded,
+                        color: _detailSecondaryTextColor,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 10),
+              Row(
+                children: [
+                  Expanded(
+                    child: _BottomContactAction(
+                      backgroundColor: const Color(0xFF18A84B),
+                      foregroundColor: Colors.white,
+                      icon: Icons.phone_rounded,
+                      label: context.tr('Gọi điện'),
                       onPressed: () => _callPropertyOwner(context, property),
                     ),
                   ),
@@ -2581,140 +2815,6 @@ class _OwnerCard extends StatelessWidget {
         ),
       ),
     );
-  }
-}
-
-class _ContactBar extends StatelessWidget {
-  const _ContactBar({required this.property});
-
-  final PropertyModel property;
-
-  @override
-  Widget build(BuildContext context) {
-    final store = AppScope.of(context);
-    final owner = property.owner;
-
-    return SafeArea(
-      top: false,
-      child: Material(
-        color: Colors.white,
-        elevation: 16,
-        shadowColor: const Color(0x33000000),
-        child: Container(
-          padding: const EdgeInsets.fromLTRB(13, 8, 13, 10),
-          decoration: const BoxDecoration(
-            color: Colors.white,
-            border: Border(top: BorderSide(color: Color(0xFFE4EAF1))),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              InkWell(
-                borderRadius: BorderRadius.circular(12),
-                onTap: () {
-                  Navigator.of(context).push(
-                    MaterialPageRoute<void>(
-                      builder: (_) => AgentProfilePage(agent: owner),
-                    ),
-                  );
-                },
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 2),
-                  child: Row(
-                    children: [
-                      AppAvatar(
-                        url: owner.avatarUrl,
-                        fallbackText: owner.name,
-                        radius: 24,
-                      ),
-                      const SizedBox(width: 11),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              owner.name,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
-                                color: Color(0xFF162C45),
-                                fontSize: 16,
-                                height: 1.1,
-                                fontWeight: FontWeight.w900,
-                              ),
-                            ),
-                            const SizedBox(height: 5),
-                            AgentLevelBadge(agent: owner, compact: true),
-                            if (property.updatedAgoText.trim().isNotEmpty) ...[
-                              const SizedBox(height: 5),
-                              Row(
-                                children: [
-                                  const Icon(
-                                    Icons.schedule_rounded,
-                                    size: 13,
-                                    color: Colors.blueGrey,
-                                  ),
-                                  const SizedBox(width: 4),
-                                  Expanded(
-                                    child: Text(
-                                      property.updatedAgoText,
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: const TextStyle(
-                                        color: Colors.blueGrey,
-                                        fontSize: 11.5,
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ],
-                          ],
-                        ),
-                      ),
-                      const Icon(
-                        Icons.chevron_right_rounded,
-                        color: Color(0xFFA0AAB5),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              const SizedBox(height: 8),
-              Row(
-                children: [
-                  Expanded(
-                    child: _BottomContactAction(
-                      backgroundColor: const Color(0xFF18A84B),
-                      foregroundColor: Colors.white,
-                      icon: Icons.phone_rounded,
-                      label: _phoneButtonLabel(context, store),
-                      onPressed: () => _callPropertyOwner(context, property),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: _BottomContactAction(
-                      backgroundColor: const Color(0xFF1697F6),
-                      foregroundColor: Colors.white,
-                      icon: Icons.forum_rounded,
-                      label: context.tr('Nhắn tin'),
-                      onPressed: () => _openPropertyChat(context, property),
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  String _phoneButtonLabel(BuildContext context, AppStore store) {
-    if (!store.isLoggedIn) return context.tr('Xem số điện thoại');
-    final phone = property.owner.phone.trim();
-    return phone.isEmpty ? context.tr('Đang cập nhật') : phone;
   }
 }
 
@@ -2839,9 +2939,9 @@ class _BottomContactAction extends StatelessWidget {
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       color: foregroundColor,
-                      fontSize: 12,
-                      height: 1,
-                      fontWeight: FontWeight.w900,
+                      fontSize: 12.5,
+                      height: 1.1,
+                      fontWeight: FontWeight.w700,
                     ),
                   ),
                 ),

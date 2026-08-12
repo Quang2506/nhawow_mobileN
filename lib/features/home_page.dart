@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -58,6 +60,13 @@ class _HomePageState extends State<HomePage> {
   double _previousScrollOffset = 0;
   String _sortBy = 'relevant';
 
+  Timer? _apiRetryTimer;
+  Timer? _apiRetryDeadlineTimer;
+  DateTime? _apiRetryStartedAt;
+  bool _isApiConnectionRetrying = false;
+  bool _apiConnectionTimedOut = false;
+  bool _apiRetryRequestInFlight = false;
+
   @override
   void initState() {
     super.initState();
@@ -87,6 +96,8 @@ class _HomePageState extends State<HomePage> {
 
   @override
   void dispose() {
+    _apiRetryTimer?.cancel();
+    _apiRetryDeadlineTimer?.cancel();
     _scrollController
       ..removeListener(_handleScroll)
       ..dispose();
@@ -175,9 +186,128 @@ class _HomePageState extends State<HomePage> {
     widget.onBottomSwitcherVisibilityChanged?.call(visible);
   }
 
+  void _syncApiConnectionRecovery(AppStore store) {
+    final hasConnectionFailure =
+        store.propertyError != null && store.properties.isEmpty;
+    final hasRecovered = (_isApiConnectionRetrying || _apiConnectionTimedOut) &&
+        !store.isLoadingProperties &&
+        store.propertyError == null;
+
+    if (hasRecovered) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        _resetApiConnectionRecovery();
+      });
+      return;
+    }
+
+    if (hasConnectionFailure &&
+        !_isApiConnectionRetrying &&
+        !_apiConnectionTimedOut) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted ||
+            _isApiConnectionRetrying ||
+            _apiConnectionTimedOut) {
+          return;
+        }
+        _startApiConnectionRecovery();
+      });
+    }
+  }
+
+  void _startApiConnectionRecovery({bool retryImmediately = false}) {
+    _apiRetryTimer?.cancel();
+    _apiRetryDeadlineTimer?.cancel();
+    _apiRetryStartedAt = DateTime.now();
+
+    setState(() {
+      _isApiConnectionRetrying = true;
+      _apiConnectionTimedOut = false;
+    });
+
+    if (retryImmediately) {
+      unawaited(_retryApiConnection());
+    }
+
+    _apiRetryTimer = Timer.periodic(
+      const Duration(seconds: 3),
+      (_) => unawaited(_retryApiConnection()),
+    );
+    _apiRetryDeadlineTimer = Timer(
+      const Duration(seconds: 30),
+      _markApiConnectionTimedOut,
+    );
+  }
+
+  Future<void> _retryApiConnection() async {
+    if (!mounted ||
+        !_isApiConnectionRetrying ||
+        _apiRetryRequestInFlight ||
+        _apiConnectionTimedOut ||
+        _store.isLoadingProperties) {
+      return;
+    }
+
+    final startedAt = _apiRetryStartedAt;
+    if (startedAt != null &&
+        DateTime.now().difference(startedAt) >= const Duration(seconds: 30)) {
+      _markApiConnectionTimedOut();
+      return;
+    }
+
+    _apiRetryRequestInFlight = true;
+    try {
+      await _store.refreshProperties(force: true);
+    } finally {
+      _apiRetryRequestInFlight = false;
+    }
+
+    if (!mounted) return;
+    if (_store.propertyError == null && !_store.isLoadingProperties) {
+      _resetApiConnectionRecovery();
+    }
+  }
+
+  void _markApiConnectionTimedOut() {
+    if (!mounted || !_isApiConnectionRetrying) return;
+    _apiRetryTimer?.cancel();
+    _apiRetryTimer = null;
+    _apiRetryDeadlineTimer?.cancel();
+    _apiRetryDeadlineTimer = null;
+    setState(() {
+      _isApiConnectionRetrying = false;
+      _apiConnectionTimedOut = true;
+    });
+  }
+
+  void _resetApiConnectionRecovery() {
+    _apiRetryTimer?.cancel();
+    _apiRetryTimer = null;
+    _apiRetryDeadlineTimer?.cancel();
+    _apiRetryDeadlineTimer = null;
+    _apiRetryStartedAt = null;
+    if (!_isApiConnectionRetrying && !_apiConnectionTimedOut) return;
+    setState(() {
+      _isApiConnectionRetrying = false;
+      _apiConnectionTimedOut = false;
+    });
+  }
+
+  void _retryAfterApiTimeout() {
+    _startApiConnectionRecovery(retryImmediately: true);
+  }
+
   @override
   Widget build(BuildContext context) {
     final store = AppScope.of(context);
+    _syncApiConnectionRecovery(store);
+
+    if (_apiConnectionTimedOut && store.properties.isEmpty) {
+      return _ServerUnavailableScreen(onRetry: _retryAfterApiTimeout);
+    }
+
+    final isApiRecoveryActive = _isApiConnectionRetrying ||
+        (store.propertyError != null && store.properties.isEmpty);
     final selectedKind = widget.selectedKind;
     final items = store.properties
         .where((item) => item.kind == selectedKind)
@@ -244,35 +374,22 @@ class _HomePageState extends State<HomePage> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          if (store.isLoadingProperties) ...[
-                            const LinearProgressIndicator(),
-                            const SizedBox(height: 12),
-                          ],
-                          if (store.propertyError != null ||
-                              store.usingMockData) ...[
-                            _ApiStatusBanner(
-                              message: store.usingMockData
-                                  ? context.tr('Chưa kết nối được API PostgreSQL. Ứng dụng đang hiển thị dữ liệu mẫu.')
-                                  : context.tr(store.propertyError!),
-                              onRetry: store.refreshProperties,
-                            ),
-                            const SizedBox(height: 14),
-                          ],
                           const SizedBox(height: 18),
                           _HomeListingHeader(
                             title: context.tr(selectedKind.label),
                             subtitle: context.tr(
-                              'Danh sách tin mới nhất từ hệ thống NhaWOW',
+                              'Gợi ý mới dành cho bạn',
                             ),
                             sortBy: _sortBy,
                             onSortTap: _openHomeSortSheet,
                           ),
                           const SizedBox(height: 12),
-                          PropertyGrid(
-                            properties: items,
-                            onPropertyTap: (property) =>
-                                _openDetail(context, property.id),
-                          ),
+                          if (!(isApiRecoveryActive && items.isEmpty))
+                            PropertyGrid(
+                              properties: items,
+                              onPropertyTap: (property) =>
+                                  _openDetail(context, property.id),
+                            ),
                           if (isLoadingMore) ...[
                             const SizedBox(height: 22),
                             const _HomeLoadMoreIndicator(),
@@ -314,6 +431,18 @@ class _HomePageState extends State<HomePage> {
                 ),
               ),
             ),
+            if (store.isLoadingProperties || isApiRecoveryActive)
+              const Positioned(
+                top: 0,
+                left: 0,
+                right: 0,
+                child: IgnorePointer(
+                  child: LinearProgressIndicator(
+                    minHeight: 2.5,
+                    backgroundColor: Colors.transparent,
+                  ),
+                ),
+              ),
           ],
         ),
       ),
@@ -429,7 +558,7 @@ class _HomeListingHeader extends StatelessWidget {
                 style: const TextStyle(
                   color: _HomePalette.navy,
                   fontSize: 21,
-                  fontWeight: FontWeight.w900,
+                  fontWeight: FontWeight.w700,
                 ),
               ),
               const SizedBox(height: 4),
@@ -548,21 +677,23 @@ class _DesignedHomeHeader extends StatelessWidget {
                         alignment: Alignment.center,
                         filterQuality: FilterQuality.high,
                         errorBuilder: (_, __, ___) => const ColoredBox(
-                          color: _HomePalette.pageBackground,
+                          color: Colors.white,
                         ),
                       ),
 
-                      // Lớp phủ xanh navy làm dịu ảnh và giúp chữ trắng dễ đọc.
+                      // Lớp màng trắng nhẹ ở nửa trái banner. Không dùng lớp
+                      // navy tối để phần nội dung bên trái không bị chuyển xám.
                       const DecoratedBox(
                         decoration: BoxDecoration(
                           gradient: LinearGradient(
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                            stops: [0.0, 0.52, 1.0],
+                            begin: Alignment.centerLeft,
+                            end: Alignment.centerRight,
+                            stops: [0.0, 0.46, 0.72, 1.0],
                             colors: [
-                              Color(0xA8061B3F),
-                              Color(0x52061B3F),
-                              Color(0x12061B3F),
+                              Color(0xEFFFFFFF),
+                              Color(0xBFFFFFFF),
+                              Color(0x42FFFFFF),
+                              Color(0x00FFFFFF),
                             ],
                           ),
                         ),
@@ -623,38 +754,40 @@ class _HomeQuickAccessPanel extends StatelessWidget {
     final searchHeight = verySmall ? 44.0 : (compact ? 48.0 : 52.0);
     final contentGap = verySmall ? 10.0 : 14.0;
 
-    return Material(
-      color: Colors.white,
-      elevation: 7,
-      shadowColor: const Color(0x26082457),
-      borderRadius: BorderRadius.circular(radius),
-      child: Container(
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(radius),
-          border: Border.all(color: const Color(0xFFF0F3F8)),
-        ),
-        padding: EdgeInsets.all(panelPadding),
-        child: Column(
-          children: [
-            SizedBox(
-              height: searchHeight,
-              child: _HeroSearchPill(
-                onTap: onSearch,
-                compact: compact,
-                verySmall: verySmall,
-              ),
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(radius),
+        border: Border.all(color: const Color(0xFFE8EDF5)),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x12082457),
+            blurRadius: 24,
+            offset: Offset(0, 7),
+          ),
+        ],
+      ),
+      padding: EdgeInsets.all(panelPadding),
+      child: Column(
+        children: [
+          SizedBox(
+            height: searchHeight,
+            child: _HeroSearchPill(
+              onTap: onSearch,
+              compact: compact,
+              verySmall: verySmall,
             ),
-            SizedBox(height: contentGap),
-            Expanded(
-              child: _QuickCategoryCard(
-                compact: compact,
-                verySmall: verySmall,
-                selectedKind: selectedKind,
-                onSelected: onCategorySelected,
-              ),
+          ),
+          SizedBox(height: contentGap),
+          Expanded(
+            child: _QuickCategoryCard(
+              compact: compact,
+              verySmall: verySmall,
+              selectedKind: selectedKind,
+              onSelected: onCategorySelected,
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -726,17 +859,10 @@ class _HeroForeground extends StatelessWidget {
                 Text(
                   greeting,
                   style: TextStyle(
-                    color: const Color(0xE6FFFFFF),
+                    color: _HomePalette.navy,
                     fontSize: verySmall ? 12.5 : (compact ? 14 : 18),
                     fontWeight: FontWeight.w600,
                     height: 1.05,
-                    shadows: const [
-                      Shadow(
-                        color: Color(0x66000000),
-                        blurRadius: 7,
-                        offset: Offset(0, 2),
-                      ),
-                    ],
                   ),
                 ),
                 const SizedBox(height: 2),
@@ -750,18 +876,11 @@ class _HeroForeground extends StatelessWidget {
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
-                          color: Colors.white,
+                          color: _HomePalette.navy,
                           fontSize: verySmall ? 26 : (compact ? 32 : 43),
-                          fontWeight: FontWeight.w900,
+                          fontWeight: FontWeight.w700,
                           letterSpacing: -0.8,
                           height: 1,
-                          shadows: const [
-                            Shadow(
-                              color: Color(0x73000000),
-                              blurRadius: 10,
-                              offset: Offset(0, 2),
-                            ),
-                          ],
                         ),
                       ),
                     ),
@@ -782,17 +901,10 @@ class _HeroForeground extends StatelessWidget {
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
-                    color: const Color(0xD1FFFFFF),
+                    color: _HomePalette.secondaryText,
                     fontSize: verySmall ? 11 : (compact ? 12.5 : 15),
                     height: 1.32,
                     fontWeight: FontWeight.w500,
-                    shadows: const [
-                      Shadow(
-                        color: Color(0x66000000),
-                        blurRadius: 8,
-                        offset: Offset(0, 2),
-                      ),
-                    ],
                   ),
                 ),
               ],
@@ -849,7 +961,7 @@ class _LoginNowButton extends StatelessWidget {
             style: TextStyle(
               color: _HomePalette.primary,
               fontSize: verySmall ? 10.5 : (compact ? 11.5 : 14),
-              fontWeight: FontWeight.w800,
+              fontWeight: FontWeight.w700,
             ),
           ),
         ),
@@ -893,17 +1005,10 @@ class _WhiteBrandWordmark extends StatelessWidget {
               const Text(
                 'NhaWOW',
                 style: TextStyle(
-                  color: Colors.white,
+                  color: _HomePalette.navy,
                   fontSize: 18,
-                  fontWeight: FontWeight.w900,
+                  fontWeight: FontWeight.w700,
                   letterSpacing: -0.4,
-                  shadows: [
-                    Shadow(
-                      color: Color(0x73000000),
-                      blurRadius: 8,
-                      offset: Offset(0, 2),
-                    ),
-                  ],
                 ),
               ),
             ],
@@ -1350,7 +1455,7 @@ class _QuickCategoryTile extends StatelessWidget {
                             style: TextStyle(
                               color: _HomePalette.navy,
                               fontSize: titleSize,
-                              fontWeight: FontWeight.w800,
+                              fontWeight: FontWeight.w700,
                               height: 1.05,
                             ),
                           ),
@@ -1433,36 +1538,75 @@ class _HomeLoadMoreIndicator extends StatelessWidget {
   }
 }
 
-class _ApiStatusBanner extends StatelessWidget {
-  const _ApiStatusBanner({required this.message, required this.onRetry});
+class _ServerUnavailableScreen extends StatelessWidget {
+  const _ServerUnavailableScreen({required this.onRetry});
 
-  final String message;
-  final Future<void> Function() onRetry;
+  final VoidCallback onRetry;
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: const Color(0xFFFFF4D6),
-      borderRadius: BorderRadius.circular(14),
-      child: Padding(
-        padding: const EdgeInsets.all(14),
-        child: Row(
-          children: [
-            const Icon(Icons.info_outline, color: Color(0xFF9A6700)),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Text(
-                context.tr(message),
-                maxLines: 3,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(color: Color(0xFF714B00)),
+    return Scaffold(
+      backgroundColor: Colors.white,
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 30),
+          child: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 420),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 78,
+                    height: 78,
+                    decoration: const BoxDecoration(
+                      color: Color(0xFFF0F6FF),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
+                      Icons.cloud_off_rounded,
+                      size: 37,
+                      color: _HomePalette.primary,
+                    ),
+                  ),
+                  const SizedBox(height: 22),
+                  Text(
+                    context.tr('Không thể kết nối được với máy chủ'),
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      color: _HomePalette.navy,
+                      fontSize: 21,
+                      height: 1.25,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: -0.2,
+                    ),
+                  ),
+                  const SizedBox(height: 9),
+                  Text(
+                    context.tr(
+                      'Ứng dụng đã tự động thử kết nối lại trong 30 giây. Vui lòng kiểm tra mạng rồi thử lại.',
+                    ),
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      color: _HomePalette.secondaryText,
+                      fontSize: 14,
+                      height: 1.45,
+                      fontWeight: FontWeight.w400,
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  SizedBox(
+                    width: 180,
+                    child: FilledButton.icon(
+                      onPressed: onRetry,
+                      icon: const Icon(Icons.refresh_rounded, size: 19),
+                      label: Text(context.tr('Thử lại')),
+                    ),
+                  ),
+                ],
               ),
             ),
-            TextButton(
-              onPressed: () => onRetry(),
-              child: Text(context.tr('Thử lại')),
-            ),
-          ],
+          ),
         ),
       ),
     );
@@ -1498,7 +1642,7 @@ class _BrokerBanner extends StatelessWidget {
                     style: const TextStyle(
                       color: _HomePalette.navy,
                       fontSize: 17,
-                      fontWeight: FontWeight.w900,
+                      fontWeight: FontWeight.w700,
                     ),
                   ),
                   const SizedBox(height: 5),

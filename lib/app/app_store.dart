@@ -281,14 +281,11 @@ class AppStore extends ChangeNotifier {
       _propertyError = error.toString();
       _isInitialized = true;
 
-      // Giữ giao diện sử dụng được khi máy công ty chưa trỏ đúng API.
-      // Dữ liệu mẫu đã nằm sẵn trong ứng dụng nên không cần tải thêm trang.
-      if (_properties.isEmpty) {
-        _properties.addAll(mockProperties);
-        _usingMockData = true;
-      }
+      // Không đưa dữ liệu mẫu ra giao diện khi API tạm thời mất kết nối.
+      // HomePage sẽ tự thử kết nối lại mỗi 3 giây trong tối đa 30 giây.
+      // Nếu trước đó đã có dữ liệu thật, giữ nguyên danh sách đang hiển thị.
+      _usingMockData = false;
       for (final kind in ListingKind.values) {
-        _loadedPages[kind] = 1;
         _hasMoreByKind[kind] = false;
       }
     } finally {

@@ -61,7 +61,7 @@ class BrandWordmark extends StatelessWidget {
           style: TextStyle(
             color: AppTheme.navy,
             fontSize: compact ? 20 : 24,
-            fontWeight: FontWeight.w900,
+            fontWeight: FontWeight.w700,
             letterSpacing: -0.5,
           ),
         ),
@@ -98,7 +98,7 @@ class SectionHeader extends StatelessWidget {
                 style: const TextStyle(
                   color: AppTheme.navy,
                   fontSize: 21,
-                  fontWeight: FontWeight.w900,
+                  fontWeight: FontWeight.w700,
                 ),
               ),
               if (subtitle != null) ...[
@@ -153,6 +153,7 @@ class PropertyGrid extends StatelessWidget {
         final cardHeight = imageHeight + (columns == 1 ? 130.0 : 158.0);
 
         return GridView.builder(
+          padding: EdgeInsets.zero,
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
           itemCount: properties.length,
@@ -308,7 +309,7 @@ class PropertyCard extends StatelessWidget {
                       style: const TextStyle(
                         color: AppTheme.navy,
                         fontSize: 15.5,
-                        fontWeight: FontWeight.w800,
+                        fontWeight: FontWeight.w700,
                         height: 1.16,
                       ),
                     ),
@@ -405,7 +406,7 @@ class PropertyCard extends StatelessWidget {
                                         style: const TextStyle(
                                           color: _priceColor,
                                           fontSize: 18,
-                                          fontWeight: FontWeight.w900,
+                                          fontWeight: FontWeight.w700,
                                           height: 1.05,
                                         ),
                                       ),
@@ -415,7 +416,7 @@ class PropertyCard extends StatelessWidget {
                                           style: const TextStyle(
                                             color: _priceColor,
                                             fontSize: 13.5,
-                                            fontWeight: FontWeight.w800,
+                                            fontWeight: FontWeight.w700,
                                             height: 1.05,
                                           ),
                                         ),
@@ -447,7 +448,7 @@ class PropertyCard extends StatelessWidget {
                                 style: const TextStyle(
                                   color: AppTheme.navy,
                                   fontSize: 13.5,
-                                  fontWeight: FontWeight.w800,
+                                  fontWeight: FontWeight.w700,
                                   height: 1.05,
                                 ),
                               ),
@@ -732,7 +733,7 @@ class _PropertyCardGalleryState extends State<_PropertyCardGallery> {
                     style: const TextStyle(
                       color: Colors.white,
                       fontSize: 13,
-                      fontWeight: FontWeight.w800,
+                      fontWeight: FontWeight.w700,
                     ),
                   ),
                   if (_isRequestingDetail && reportedTotal > urls.length) ...[
@@ -879,7 +880,7 @@ class MiniBadge extends StatelessWidget {
       ),
       child: Text(
         label,
-        style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w800),
+        style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w700),
       ),
     );
   }
@@ -937,7 +938,7 @@ class EmptyState extends StatelessWidget {
                 style: const TextStyle(
                   color: AppTheme.navy,
                   fontSize: 19,
-                  fontWeight: FontWeight.w800,
+                  fontWeight: FontWeight.w700,
                 ),
               ),
               const SizedBox(height: 8),
@@ -985,7 +986,7 @@ class CountBadge extends StatelessWidget {
               alignment: Alignment.center,
               child: Text(
                 count > 99 ? '99+' : '$count',
-                style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.w800),
+                style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.w700),
               ),
             ),
           ),

@@ -116,10 +116,15 @@ class AppLocalizations {
       'với trải nghiệm VR 360°.': 'with immersive VR 360° tours.',
       'Danh sách tin mới nhất từ hệ thống NhaWOW':
           'Latest listings from the NhaWOW system',
+      'Gợi ý mới dành cho bạn': 'New suggestions for you',
       'Chưa kết nối được API PostgreSQL. Ứng dụng đang hiển thị dữ liệu mẫu.':
           'Unable to connect to the PostgreSQL API. The app is showing sample data.',
       'Đang tải thêm bất động sản...': 'Loading more properties...',
       'Thử lại': 'Try again',
+      'Không thể kết nối được với máy chủ':
+          'Unable to connect to the server',
+      'Ứng dụng đã tự động thử kết nối lại trong 30 giây. Vui lòng kiểm tra mạng rồi thử lại.':
+          'The app automatically retried for 30 seconds. Please check your connection and try again.',
       'Bạn là môi giới hoặc chủ nhà?': 'Are you an agent or property owner?',
       'Đăng tin và quản lý khách hàng ngay trên ứng dụng NhaWOW.':
           'Post listings and manage customers directly in the NhaWOW app.',
@@ -750,10 +755,14 @@ class AppLocalizations {
       'Khám phá không gian sống chân thực': '探索真实的居住空间',
       'với trải nghiệm VR 360°.': '通过 VR 360° 沉浸式体验。',
       'Danh sách tin mới nhất từ hệ thống NhaWOW': 'NhaWOW 系统最新房源',
+      'Gợi ý mới dành cho bạn': '为你推荐的新房源',
       'Chưa kết nối được API PostgreSQL. Ứng dụng đang hiển thị dữ liệu mẫu.':
           '无法连接 PostgreSQL API，应用正在显示示例数据。',
       'Đang tải thêm bất động sản...': '正在加载更多房源…',
       'Thử lại': '重试',
+      'Không thể kết nối được với máy chủ': '无法连接服务器',
+      'Ứng dụng đã tự động thử kết nối lại trong 30 giây. Vui lòng kiểm tra mạng rồi thử lại.':
+          '应用已自动重试连接 30 秒。请检查网络后重试。',
       'Bạn là môi giới hoặc chủ nhà?': '您是经纪人还是房东？',
       'Đăng tin và quản lý khách hàng ngay trên ứng dụng NhaWOW.':
           '直接在 NhaWOW 应用中发布房源并管理客户。',

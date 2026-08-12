@@ -20,6 +20,71 @@ class AppTheme {
     return ThemeData(
       useMaterial3: true,
       colorScheme: scheme,
+      fontFamily: 'Roboto',
+      textTheme: const TextTheme(
+        headlineLarge: TextStyle(
+          fontSize: 28,
+          height: 1.18,
+          fontWeight: FontWeight.w700,
+          letterSpacing: -0.35,
+        ),
+        headlineMedium: TextStyle(
+          fontSize: 24,
+          height: 1.2,
+          fontWeight: FontWeight.w700,
+          letterSpacing: -0.25,
+        ),
+        headlineSmall: TextStyle(
+          fontSize: 20,
+          height: 1.24,
+          fontWeight: FontWeight.w700,
+          letterSpacing: -0.18,
+        ),
+        titleLarge: TextStyle(
+          fontSize: 20,
+          height: 1.25,
+          fontWeight: FontWeight.w700,
+          letterSpacing: -0.18,
+        ),
+        titleMedium: TextStyle(
+          fontSize: 16,
+          height: 1.28,
+          fontWeight: FontWeight.w600,
+          letterSpacing: -0.08,
+        ),
+        titleSmall: TextStyle(
+          fontSize: 14,
+          height: 1.3,
+          fontWeight: FontWeight.w600,
+        ),
+        bodyLarge: TextStyle(
+          fontSize: 15.5,
+          height: 1.42,
+          fontWeight: FontWeight.w400,
+          letterSpacing: -0.04,
+        ),
+        bodyMedium: TextStyle(
+          fontSize: 14,
+          height: 1.4,
+          fontWeight: FontWeight.w400,
+          letterSpacing: -0.02,
+        ),
+        bodySmall: TextStyle(
+          fontSize: 12.5,
+          height: 1.34,
+          fontWeight: FontWeight.w400,
+        ),
+        labelLarge: TextStyle(
+          fontSize: 14,
+          height: 1.2,
+          fontWeight: FontWeight.w600,
+        ),
+        labelMedium: TextStyle(
+          fontSize: 12.5,
+          height: 1.2,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
       scaffoldBackgroundColor: background,
       appBarTheme: const AppBarTheme(
         backgroundColor: Colors.white,
@@ -62,7 +127,7 @@ class AppTheme {
           return TextStyle(
             fontSize: 12,
             fontWeight: states.contains(WidgetState.selected)
-                ? FontWeight.w700
+                ? FontWeight.w600
                 : FontWeight.w500,
             color: states.contains(WidgetState.selected) ? navy : Colors.blueGrey,
           );
@@ -79,7 +144,7 @@ class AppTheme {
           foregroundColor: Colors.white,
           minimumSize: const Size(0, 48),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-          textStyle: const TextStyle(fontWeight: FontWeight.w700),
+          textStyle: const TextStyle(fontWeight: FontWeight.w600),
         ),
       ),
       outlinedButtonTheme: OutlinedButtonThemeData(
@@ -88,7 +153,7 @@ class AppTheme {
           minimumSize: const Size(0, 48),
           side: const BorderSide(color: Color(0xFFD6DFE9)),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-          textStyle: const TextStyle(fontWeight: FontWeight.w700),
+          textStyle: const TextStyle(fontWeight: FontWeight.w600),
         ),
       ),
     );
