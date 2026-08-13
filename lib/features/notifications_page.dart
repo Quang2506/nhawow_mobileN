@@ -111,7 +111,7 @@ class _NotificationsPageState extends State<NotificationsPage> {
                 ? context.tr(
                     'Các cập nhật về tin đăng, hội viên và ví NhaWOW sẽ xuất hiện tại đây.',
                   )
-                : store.notificationError!,
+                : context.tr(store.notificationError!),
             action: store.notificationError == null
                 ? null
                 : OutlinedButton.icon(
@@ -148,7 +148,7 @@ class _NotificationsPageState extends State<NotificationsPage> {
               ),
             ),
             title: Text(
-              item.title,
+              context.tr(item.title),
               style: TextStyle(
                 color: AppTheme.navy,
                 fontWeight: item.isRead ? FontWeight.w700 : FontWeight.w900,
@@ -159,7 +159,7 @@ class _NotificationsPageState extends State<NotificationsPage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(item.message),
+                  Text(context.tr(item.message)),
                   if (item.propertyTitle.trim().isNotEmpty) ...[
                     const SizedBox(height: 4),
                     Text(
@@ -245,7 +245,7 @@ class _NotificationsPageState extends State<NotificationsPage> {
 
   static void _showError(BuildContext context, String message) {
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message)),
+      SnackBar(content: Text(context.tr(message))),
     );
   }
 }

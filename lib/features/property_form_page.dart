@@ -756,7 +756,7 @@ class _PropertyFormPageState extends State<PropertyFormPage> {
               controller: _field1,
               label: context.tr('Giá sang nhượng'),
               hint: context.tr('Ví dụ: 300000000'),
-              suffix: 'VNĐ',
+              suffix: context.tr('VNĐ'),
               numeric: true,
             ),
             _DynamicField(
@@ -813,7 +813,7 @@ class _PropertyFormPageState extends State<PropertyFormPage> {
             ...lookups.orientations.map(
               (item) => DropdownMenuItem<String>(
                 value: item.code,
-                child: Text(item.name),
+                child: Text(context.tr(item.name)),
               ),
             ),
           ],
@@ -859,7 +859,7 @@ class _PropertyFormPageState extends State<PropertyFormPage> {
                           ),
                           Expanded(
                             child: Text(
-                              item.name,
+                              context.tr(item.name),
                               style: const TextStyle(fontWeight: FontWeight.w700),
                             ),
                           ),
@@ -941,7 +941,7 @@ class _PropertyFormPageState extends State<PropertyFormPage> {
               final selected = _selectedAmenities.contains(item.code);
               return FilterChip(
                 selected: selected,
-                label: Text(item.name),
+                label: Text(context.tr(item.name)),
                 avatar: Icon(
                   selected ? Icons.check_circle : Icons.add_circle_outline,
                   size: 18,
@@ -1179,7 +1179,7 @@ class _PropertyFormPageState extends State<PropertyFormPage> {
     } catch (error) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(error.toString())),
+        SnackBar(content: Text(context.tr(error.toString()))),
       );
     }
   }
@@ -1444,13 +1444,13 @@ class _PropertyFormPageState extends State<PropertyFormPage> {
           : await store.createPartnerProperty(request);
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(result.message)),
+        SnackBar(content: Text(context.tr(result.message))),
       );
       Navigator.of(context).pop(true);
     } catch (error) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(error.toString())),
+        SnackBar(content: Text(context.tr(error.toString()))),
       );
       setState(() => _submitting = false);
     }
@@ -1530,7 +1530,7 @@ class _SelectedTypeSummary extends StatelessWidget {
                   ),
                   const SizedBox(height: 3),
                   Text(
-                    propertyType.name,
+                    context.tr(propertyType.name),
                     style: const TextStyle(fontWeight: FontWeight.w700),
                   ),
                 ],

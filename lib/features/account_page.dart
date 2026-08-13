@@ -7,6 +7,7 @@ import '../core/app_image.dart';
 import '../core/app_theme.dart';
 import '../core/widgets.dart';
 import '../l10n/app_localizations.dart';
+import 'agent_profile_page.dart';
 import 'change_password_page.dart';
 import 'landlord_request_page.dart';
 import 'language_picker.dart';
@@ -394,15 +395,28 @@ class _LoggedInAccount extends StatelessWidget {
               await store.preloadPartnerProperties();
             },
           ),
+        if (store.isBroker)
+          _AccountMenuItem(
+            icon: Icons.person_search_outlined,
+            title: context.tr('Xem hồ sơ môi giới'),
+            subtitle: context.tr('Xem hồ sơ công khai và các tin đăng của bạn'),
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(
+                builder: (_) => AgentProfilePage(agent: store.currentUser),
+              ),
+            ),
+          ),
         _AccountMenuItem(
           icon: Icons.workspace_premium_outlined,
           title: context.tr('Hội viên'),
           subtitle: context.tr(
             'Gói hiện tại: {code}',
             {
-              'code': store.membershipUsage.currentPlanName.trim().isNotEmpty
-                  ? store.membershipUsage.currentPlanName
-                  : store.membershipCode,
+              'code': context.tr(
+                store.membershipUsage.currentPlanName.trim().isNotEmpty
+                    ? store.membershipUsage.currentPlanName
+                    : store.membershipCode,
+              ),
             },
           ),
           onTap: () => Navigator.of(context).push(
@@ -411,8 +425,8 @@ class _LoggedInAccount extends StatelessWidget {
         ),
         _AccountMenuItem(
           icon: Icons.menu_book_outlined,
-          title: 'Gói mua & dịch vụ',
-          subtitle: 'Xem bảng giá, quyền lợi hội viên và dịch vụ gia tăng',
+          title: context.tr('Gói mua & dịch vụ'),
+          subtitle: context.tr('Xem bảng giá, quyền lợi hội viên và dịch vụ gia tăng'),
           onTap: () => Navigator.of(context).push(
             MaterialPageRoute<void>(builder: (_) => const ServiceIntroPage()),
           ),

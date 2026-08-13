@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../core/app_theme.dart';
 import '../core/widgets.dart';
+import '../l10n/app_localizations.dart';
 
 class ServiceIntroPage extends StatelessWidget {
   const ServiceIntroPage({super.key});
@@ -135,7 +136,7 @@ class ServiceIntroPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Gói mua & dịch vụ')),
+      appBar: AppBar(title: Text(context.tr('Gói mua & dịch vụ'))),
       body: SingleChildScrollView(
         physics: const BouncingScrollPhysics(),
         child: PageContainer(
@@ -443,15 +444,15 @@ class _HeroCard extends StatelessWidget {
               color: Colors.white.withValues(alpha: 0.18),
               borderRadius: BorderRadius.circular(999),
             ),
-            child: const Text(
-              'TÀI LIỆU GIỚI THIỆU SẢN PHẨM',
-              style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w800),
+            child: Text(
+              context.tr('TÀI LIỆU GIỚI THIỆU SẢN PHẨM'),
+              style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w800),
             ),
           ),
           const SizedBox(height: 14),
-          const Text(
-            'GÓI MUA & DỊCH VỤ NhaWOW',
-            style: TextStyle(
+          Text(
+            context.tr('GÓI MUA & DỊCH VỤ NhaWOW'),
+            style: const TextStyle(
               color: Colors.white,
               fontSize: 28,
               fontWeight: FontWeight.w900,
@@ -459,9 +460,9 @@ class _HeroCard extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 8),
-          const Text(
-            'Bảng giá, quyền lợi hội viên, combo đăng tin, dịch vụ gia tăng và cơ chế ưu tiên hiển thị.',
-            style: TextStyle(color: Colors.white, height: 1.5),
+          Text(
+            context.tr('Bảng giá, quyền lợi hội viên, combo đăng tin, dịch vụ gia tăng và cơ chế ưu tiên hiển thị.'),
+            style: const TextStyle(color: Colors.white, height: 1.5),
           ),
           const SizedBox(height: 16),
           Wrap(
@@ -492,7 +493,7 @@ class _HeroChip extends StatelessWidget {
         borderRadius: BorderRadius.circular(999),
       ),
       child: Text(
-        label,
+        context.tr(label),
         style: const TextStyle(
           color: AppTheme.navy,
           fontSize: 12,
@@ -541,7 +542,7 @@ class _SectionTitle extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                title,
+                context.tr(title),
                 style: const TextStyle(
                   color: AppTheme.navy,
                   fontSize: 20,
@@ -549,7 +550,7 @@ class _SectionTitle extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 4),
-              Text(subtitle, style: TextStyle(color: Colors.blueGrey.shade700, height: 1.45)),
+              Text(context.tr(subtitle), style: TextStyle(color: Colors.blueGrey.shade700, height: 1.45)),
             ],
           ),
         ),
@@ -582,7 +583,7 @@ class _OverviewCard extends StatelessWidget {
             ),
             const SizedBox(height: 14),
             Text(
-              item.title,
+              context.tr(item.title),
               style: const TextStyle(
                 color: AppTheme.navy,
                 fontSize: 18,
@@ -590,7 +591,7 @@ class _OverviewCard extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 6),
-            Text(item.subtitle, style: const TextStyle(height: 1.5)),
+            Text(context.tr(item.subtitle), style: const TextStyle(height: 1.5)),
             const SizedBox(height: 12),
             Container(
               width: double.infinity,
@@ -601,7 +602,7 @@ class _OverviewCard extends StatelessWidget {
                 border: Border.all(color: const Color(0xFFDDEBFA)),
               ),
               child: Text(
-                item.meta,
+                context.tr(item.meta),
                 style: const TextStyle(color: AppTheme.primaryDark, fontWeight: FontWeight.w700),
               ),
             ),
@@ -637,7 +638,7 @@ class _MembershipPlanCard extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        plan.name,
+                        context.tr(plan.name),
                         style: const TextStyle(
                           color: AppTheme.navy,
                           fontSize: 19,
@@ -646,7 +647,7 @@ class _MembershipPlanCard extends StatelessWidget {
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        plan.price,
+                        context.tr(plan.price),
                         style: const TextStyle(
                           color: AppTheme.primaryDark,
                           fontSize: 16,
@@ -704,7 +705,7 @@ class _Badge extends StatelessWidget {
         border: Border.all(color: const Color(0xFFD9EBFB)),
       ),
       child: Text(
-        label,
+        context.tr(label),
         style: const TextStyle(color: AppTheme.primaryDark, fontWeight: FontWeight.w700),
       ),
     );
@@ -744,7 +745,7 @@ class _PriceCard extends StatelessWidget {
                     children: [
                       Expanded(
                         child: Text(
-                          item.title,
+                          context.tr(item.title),
                           style: const TextStyle(
                             color: AppTheme.navy,
                             fontSize: 17,
@@ -754,7 +755,7 @@ class _PriceCard extends StatelessWidget {
                       ),
                       const SizedBox(width: 10),
                       Text(
-                        item.price,
+                        context.tr(item.price),
                         style: const TextStyle(
                           color: AppTheme.primaryDark,
                           fontWeight: FontWeight.w800,
@@ -763,7 +764,7 @@ class _PriceCard extends StatelessWidget {
                     ],
                   ),
                   const SizedBox(height: 8),
-                  Text(item.description, style: const TextStyle(height: 1.5)),
+                  Text(context.tr(item.description), style: const TextStyle(height: 1.5)),
                 ],
               ),
             ),
@@ -794,7 +795,7 @@ class _HighlightNote extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            title,
+            context.tr(title),
             style: const TextStyle(
               color: AppTheme.navy,
               fontSize: 16,
@@ -844,7 +845,7 @@ class _TimelineCard extends StatelessWidget {
                     Expanded(
                       child: Padding(
                         padding: const EdgeInsets.only(top: 4),
-                        child: Text(steps[i], style: const TextStyle(height: 1.45)),
+                        child: Text(context.tr(steps[i]), style: const TextStyle(height: 1.45)),
                       ),
                     ),
                   ],
@@ -871,7 +872,7 @@ class _SuggestionCard extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              item.need,
+              context.tr(item.need),
               style: const TextStyle(
                 color: AppTheme.navy,
                 fontSize: 16,
@@ -881,7 +882,7 @@ class _SuggestionCard extends StatelessWidget {
             const SizedBox(height: 8),
             _Badge(label: item.recommendation),
             const SizedBox(height: 10),
-            Text(item.reason, style: const TextStyle(height: 1.5)),
+            Text(context.tr(item.reason), style: const TextStyle(height: 1.5)),
           ],
         ),
       ),
@@ -919,7 +920,7 @@ class _RoleCard extends StatelessWidget {
             children: [
               Expanded(
                 child: Text(
-                  title,
+                  context.tr(title),
                   style: const TextStyle(
                     color: AppTheme.navy,
                     fontSize: 16,
@@ -942,9 +943,9 @@ class _RoleCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 8),
-          Text('Quản lý tin: $capability', style: const TextStyle(height: 1.4)),
+          Text(context.tr('Quản lý tin: {value}', {'value': context.tr(capability)}), style: const TextStyle(height: 1.4)),
           const SizedBox(height: 4),
-          Text('Hội viên / dịch vụ: $rights', style: const TextStyle(height: 1.4)),
+          Text(context.tr('Hội viên / dịch vụ: {value}', {'value': context.tr(rights)}), style: const TextStyle(height: 1.4)),
         ],
       ),
     );
@@ -959,7 +960,7 @@ class _InfoHeading extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Text(
-      text,
+      context.tr(text),
       style: const TextStyle(
         color: AppTheme.navy,
         fontSize: 16,
@@ -989,7 +990,7 @@ class _BulletLines extends StatelessWidget {
                   child: Icon(Icons.circle, size: 7, color: AppTheme.primaryDark),
                 ),
                 const SizedBox(width: 10),
-                Expanded(child: Text(lines[i], style: const TextStyle(height: 1.45))),
+                Expanded(child: Text(context.tr(lines[i]), style: const TextStyle(height: 1.45))),
               ],
             ),
           ),
@@ -1011,7 +1012,7 @@ class _MiniTableRow extends StatelessWidget {
       children: [
         Expanded(
           child: Text(
-            title,
+            context.tr(title),
             style: const TextStyle(
               color: AppTheme.navy,
               fontWeight: FontWeight.w700,
@@ -1021,7 +1022,7 @@ class _MiniTableRow extends StatelessWidget {
         const SizedBox(width: 12),
         Flexible(
           child: Text(
-            value,
+            context.tr(value),
             textAlign: TextAlign.right,
             style: const TextStyle(
               color: AppTheme.primaryDark,

@@ -634,7 +634,7 @@ class _DesignedHomeHeader extends StatelessWidget {
         // Luôn giữ đúng tỉ lệ hiển thị 750 x 500 của ảnh banner.
         final heroHeight = width / _HomeHeaderUiTuning.bannerAspectRatio;
         final quickPanelHeight = compact
-            ? (verySmall ? 286.0 : 314.0)
+            ? (verySmall ? 260.0 : 284.0)
             : 184.0;
         final controlsInset = compact
             ? (verySmall ? 12.0 : 16.0)
@@ -649,7 +649,7 @@ class _DesignedHomeHeader extends StatelessWidget {
         // một thẻ trắng, chỉ đè nhẹ lên mép dưới của banner.
         final controlsTop = heroHeight - panelOverlap;
         final totalHeight =
-            controlsTop + quickPanelHeight + (compact ? 20.0 : 24.0);
+            controlsTop + quickPanelHeight + (compact ? 12.0 : 24.0);
         final horizontalMargin = (constraints.maxWidth - width) / 2;
 
         return SizedBox(

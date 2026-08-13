@@ -92,7 +92,8 @@ class _AgentProfilePageState extends State<AgentProfilePage> {
                 (item) => item.isNotEmpty,
                 orElse: () => context.tr('Đang cập nhật'),
               ),
-          isOwnProfile: store.isLoggedIn && store.currentUser.id == widget.agent.id,
+          isOwnProfile:
+              store.isLoggedIn && store.currentUser.id == widget.agent.id,
           properties: localItems,
           totalItems: localItems.length,
         );
@@ -104,7 +105,8 @@ class _AgentProfilePageState extends State<AgentProfilePage> {
       final categoryMatches = _assetCategory == 'land'
           ? item.kind.isLand
           : !item.kind.isLand;
-      final modeMatches = _mode == 'rent' ? item.kind.isRent : !item.kind.isRent;
+      final modeMatches =
+          _mode == 'rent' ? item.kind.isRent : !item.kind.isRent;
       if (!categoryMatches || !modeMatches) return false;
       if (keyword.isEmpty) return true;
       return '${item.title} ${item.address} ${item.city} ${item.ward}'
@@ -119,8 +121,7 @@ class _AgentProfilePageState extends State<AgentProfilePage> {
     } else if (_sortBy == 'price_desc') {
       source.sort((a, b) => b.price.compareTo(a.price));
     }
-    // Với newest, giữ nguyên thứ tự do Mobile API/web trả về để không làm mất
-    // ưu tiên tin nổi bật, hạng hội viên và thời gian làm mới.
+    // newest giữ thứ tự API để bảo toàn logic ưu tiên tin nổi bật/hội viên.
     return source;
   }
 
@@ -130,39 +131,55 @@ class _AgentProfilePageState extends State<AgentProfilePage> {
     final filteredProperties = _filteredProperties;
 
     return Scaffold(
+      backgroundColor: const Color(0xFFF7F9FC),
       appBar: AppBar(
-        title: Text(context.tr('Hồ sơ người đăng')),
+        backgroundColor: Colors.white,
+        surfaceTintColor: Colors.white,
+        elevation: 0,
+        scrolledUnderElevation: 0,
+        centerTitle: true,
+        title: Text(
+          context.tr('Hồ sơ người đăng'),
+          style: const TextStyle(
+            color: AppTheme.navy,
+            fontSize: 18,
+            fontWeight: FontWeight.w800,
+          ),
+        ),
         actions: [
           IconButton(
             tooltip: context.tr('Chia sẻ'),
             onPressed: () => _copyProfileLink(profile.agent),
-            icon: const Icon(Icons.ios_share_rounded),
+            icon: const Icon(Icons.ios_share_rounded, size: 22),
           ),
+          const SizedBox(width: 4),
         ],
+        bottom: const PreferredSize(
+          preferredSize: Size.fromHeight(1),
+          child: Divider(height: 1, color: Color(0xFFE9EDF3)),
+        ),
       ),
       body: RefreshIndicator(
         onRefresh: () => _loadProfile(showLoading: false),
         child: ListView(
-          physics: const AlwaysScrollableScrollPhysics(),
-          padding: const EdgeInsets.fromLTRB(8, 8, 8, 34),
+          physics: const AlwaysScrollableScrollPhysics(
+            parent: BouncingScrollPhysics(),
+          ),
+          padding: const EdgeInsets.fromLTRB(16, 14, 16, 36),
           children: [
-            _AgentProfileHero(
+            _AgentProfileCard(
               profile: profile,
               isLoading: _isLoading,
-              onChat: () => _openChat(profile.agent),
-              onPhone: () => _callAgent(profile.agent),
+              onChat: profile.isOwnProfile
+                  ? () => _showMessage(context.tr('Đây là hồ sơ công khai của bạn.'))
+                  : () => _openChat(profile.agent),
+              onPhone: profile.isOwnProfile
+                  ? () => _showMessage(context.tr('Đây là hồ sơ công khai của bạn.'))
+                  : () => _callAgent(profile.agent),
               onViewListings: _scrollToListings,
-              onCopy: () => _copyProfileLink(profile.agent),
-              onFacebook: () => _shareProfile(profile.agent, 'facebook'),
-              onZalo: () => _shareProfile(profile.agent, 'zalo'),
             ),
-            if (_error != null) ...[
-              const SizedBox(height: 8),
-              _InlineError(
-                message: _error!,
-                onRetry: () => _loadProfile(),
-              ),
-            ],
+            // Giữ nguyên logic cấp bậc môi giới cũ. Chỉ giao diện hồ sơ phía trên
+            // và bộ lọc/tìm kiếm bên dưới được thiết kế lại theo mẫu mới.
             if (profile.agent.isBroker && profile.isOwnProfile) ...[
               const SizedBox(height: 10),
               AgentLevelRoadmap(
@@ -170,7 +187,14 @@ class _AgentProfilePageState extends State<AgentProfilePage> {
                 publishedListingCount: profile.totalPublishedListings,
               ),
             ],
-            const SizedBox(height: 14),
+            if (_error != null) ...[
+              const SizedBox(height: 10),
+              _InlineError(
+                message: _error!,
+                onRetry: () => _loadProfile(),
+              ),
+            ],
+            const SizedBox(height: 12),
             Container(
               key: _listingSectionKey,
               child: _AgentListingFilters(
@@ -193,7 +217,8 @@ class _AgentProfilePageState extends State<AgentProfilePage> {
               onPropertyTap: (property) {
                 Navigator.of(context).push(
                   MaterialPageRoute<void>(
-                    builder: (_) => PropertyDetailPage(propertyId: property.id),
+                    builder: (_) =>
+                        PropertyDetailPage(propertyId: property.id),
                   ),
                 );
               },
@@ -208,7 +233,8 @@ class _AgentProfilePageState extends State<AgentProfilePage> {
     final loggedIn = await AuthGate.ensureLoggedIn(context);
     if (!loggedIn || !mounted) return;
     try {
-      final conversation = await AppScope.of(context).startAgentConversation(agent.id);
+      final conversation =
+          await AppScope.of(context).startAgentConversation(agent.id);
       if (!mounted) return;
       await Navigator.of(context).push(
         MaterialPageRoute<void>(
@@ -238,18 +264,25 @@ class _AgentProfilePageState extends State<AgentProfilePage> {
 
     final phone = refreshedAgent.phone.trim();
     if (phone.isEmpty || phone.toLowerCase().contains('x')) {
-      if (mounted) _showMessage(context.tr('Số điện thoại đang được cập nhật.'));
+      if (mounted) {
+        _showMessage(context.tr('Số điện thoại đang được cập nhật.'));
+      }
       return;
     }
 
-    final uri = Uri(scheme: 'tel', path: phone.replaceAll(RegExp(r'[^0-9+]'), ''));
+    final uri = Uri(
+      scheme: 'tel',
+      path: phone.replaceAll(RegExp(r'[^0-9+]'), ''),
+    );
     try {
       final opened = await launchUrl(uri);
       if (!opened && mounted) {
         _showMessage(context.tr('Không thể thực hiện cuộc gọi.'));
       }
     } catch (_) {
-      if (mounted) _showMessage(context.tr('Không thể thực hiện cuộc gọi.'));
+      if (mounted) {
+        _showMessage(context.tr('Không thể thực hiện cuộc gọi.'));
+      }
     }
   }
 
@@ -258,9 +291,9 @@ class _AgentProfilePageState extends State<AgentProfilePage> {
     if (targetContext == null) return;
     Scrollable.ensureVisible(
       targetContext,
-      duration: const Duration(milliseconds: 420),
+      duration: const Duration(milliseconds: 380),
       curve: Curves.easeOutCubic,
-      alignment: 0.04,
+      alignment: 0.02,
     );
   }
 
@@ -269,24 +302,15 @@ class _AgentProfilePageState extends State<AgentProfilePage> {
 
   Future<void> _copyProfileLink(AgentModel agent) async {
     await Clipboard.setData(ClipboardData(text: _profileLink(agent)));
-    if (mounted) _showMessage(context.tr('Đã sao chép liên kết hồ sơ'));
-  }
-
-  Future<void> _shareProfile(AgentModel agent, String channel) async {
-    final link = _profileLink(agent);
-    final uri = channel == 'facebook'
-        ? Uri.https('www.facebook.com', '/sharer/sharer.php', {'u': link})
-        : Uri.https('zalo.me', '/share', {'u': link});
-    try {
-      final opened = await launchUrl(uri, mode: LaunchMode.externalApplication);
-      if (!opened && mounted) await _copyProfileLink(agent);
-    } catch (_) {
-      if (mounted) await _copyProfileLink(agent);
+    if (mounted) {
+      _showMessage(context.tr('Đã sao chép liên kết hồ sơ'));
     }
   }
 
   void _showMessage(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(context.tr(message))),
+    );
   }
 
   String _cleanError(Object error) {
@@ -295,16 +319,13 @@ class _AgentProfilePageState extends State<AgentProfilePage> {
   }
 }
 
-class _AgentProfileHero extends StatelessWidget {
-  const _AgentProfileHero({
+class _AgentProfileCard extends StatelessWidget {
+  const _AgentProfileCard({
     required this.profile,
     required this.isLoading,
     required this.onChat,
     required this.onPhone,
     required this.onViewListings,
-    required this.onCopy,
-    required this.onFacebook,
-    required this.onZalo,
   });
 
   final AgentProfileModel profile;
@@ -312,9 +333,6 @@ class _AgentProfileHero extends StatelessWidget {
   final VoidCallback onChat;
   final VoidCallback onPhone;
   final VoidCallback onViewListings;
-  final VoidCallback onCopy;
-  final VoidCallback onFacebook;
-  final VoidCallback onZalo;
 
   @override
   Widget build(BuildContext context) {
@@ -322,339 +340,306 @@ class _AgentProfileHero extends StatelessWidget {
     final city = profile.mainCity.trim().isEmpty
         ? context.tr('Đang cập nhật')
         : profile.mainCity.trim();
+    final role = agent.isBroker
+        ? context.tr('Môi giới')
+        : context.tr(agent.roleLabel.isEmpty ? 'Người đăng tin' : agent.roleLabel);
 
     return Container(
+      clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(17),
-        border: Border.all(color: const Color(0xFFE4EAF1)),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: const Color(0xFFE5EAF1)),
         boxShadow: const [
           BoxShadow(
-            color: Color(0x180F2942),
-            blurRadius: 20,
-            offset: Offset(0, 8),
+            color: Color(0x120F2942),
+            blurRadius: 24,
+            offset: Offset(0, 7),
           ),
         ],
       ),
-      clipBehavior: Clip.antiAlias,
-      child: Column(
+      child: Stack(
         children: [
-          Stack(
-            children: [
-              LayoutBuilder(
-                builder: (context, constraints) {
-                  final compact = constraints.maxWidth < 390;
-                  return IntrinsicHeight(
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        Expanded(
-                          flex: compact ? 58 : 61,
-                          child: _AgentHeroIdentity(
-                            agent: agent,
-                            city: city,
-                            listingCount: profile.totalPublishedListings,
-                            onChat: onChat,
-                            onPhone: onPhone,
-                            onViewListings: onViewListings,
-                            compact: compact,
-                          ),
-                        ),
-                        Expanded(
-                          flex: compact ? 42 : 39,
-                          child: _AgentHeroStats(
-                            profile: profile,
-                            onCopy: onCopy,
-                            onFacebook: onFacebook,
-                            onZalo: onZalo,
-                            compact: compact,
-                          ),
-                        ),
-                      ],
-                    ),
-                  );
-                },
-              ),
-              if (isLoading)
-                const Positioned(
-                  top: 0,
-                  left: 0,
-                  right: 0,
-                  child: LinearProgressIndicator(minHeight: 2),
+          Positioned.fill(
+            child: IgnorePointer(
+              child: Opacity(
+                opacity: 0.055,
+                child: Image.asset(
+                  AppAssets.agentHero,
+                  fit: BoxFit.cover,
+                  alignment: Alignment.centerRight,
+                  errorBuilder: (_, __, ___) => const SizedBox.shrink(),
                 ),
-            ],
+              ),
+            ),
           ),
-          const Divider(height: 1, color: Color(0xFFE7ECF2)),
-          _AgentTrustStrip(city: city),
-        ],
-      ),
-    );
-  }
-}
-
-class _AgentHeroIdentity extends StatelessWidget {
-  const _AgentHeroIdentity({
-    required this.agent,
-    required this.city,
-    required this.listingCount,
-    required this.onChat,
-    required this.onPhone,
-    required this.onViewListings,
-    required this.compact,
-  });
-
-  final AgentModel agent;
-  final String city;
-  final int listingCount;
-  final VoidCallback onChat;
-  final VoidCallback onPhone;
-  final VoidCallback onViewListings;
-  final bool compact;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: EdgeInsets.fromLTRB(compact ? 7 : 9, 10, compact ? 5 : 7, 9),
-      decoration: const BoxDecoration(
-        image: DecorationImage(
-          image: AssetImage(AppAssets.agentHero),
-          fit: BoxFit.cover,
-          alignment: Alignment.center,
-          opacity: 0.16,
-        ),
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [Colors.white, Color(0xF7FFFFFF), Color(0xEFFFFFFF)],
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              AgentMembershipAvatar(agent: agent, radius: compact ? 21 : 24),
-              SizedBox(width: compact ? 6 : 8),
-              Expanded(
-                child: Column(
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 14),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      agent.name,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        color: const Color(0xFF151A21),
-                        fontSize: compact ? 13 : 15,
-                        height: 1,
-                        fontWeight: FontWeight.w900,
-                      ),
-                    ),
-                    const SizedBox(height: 5),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFFFF4DD),
-                        borderRadius: BorderRadius.circular(999),
-                        border: Border.all(color: const Color(0xFFFFC66B)),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
+                    AgentMembershipAvatar(agent: agent, radius: 29),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Icon(Icons.verified_user_outlined, size: 9, color: Color(0xFFD97706)),
-                          const SizedBox(width: 3),
-                          Flexible(
-                            child: Text(
-                              context.tr('Hồ sơ công khai'),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
+                          Row(
+                            children: [
+                              Flexible(
+                                child: Text(
+                                  agent.name,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(
+                                    color: AppTheme.navy,
+                                    fontSize: 18,
+                                    height: 1.1,
+                                    fontWeight: FontWeight.w900,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 7),
+                              const _PublicProfileBadge(),
+                            ],
+                          ),
+                          const SizedBox(height: 6),
+                          if (agent.isBroker)
+                            AgentLevelBadge(
+                              agent: agent,
+                              compact: true,
+                              showLevelNumber: true,
+                              maxWidth: 190,
+                            )
+                          else
+                            Text(
+                              role,
                               style: const TextStyle(
-                                color: Color(0xFFB45309),
-                                fontSize: 7.5,
-                                height: 1,
-                                fontWeight: FontWeight.w900,
+                                color: Color(0xFF4D6480),
+                                fontSize: 12.5,
+                                fontWeight: FontWeight.w700,
                               ),
                             ),
+                          const SizedBox(height: 7),
+                          Row(
+                            children: [
+                              const Icon(
+                                Icons.location_on_outlined,
+                                size: 15,
+                                color: Color(0xFF64748B),
+                              ),
+                              const SizedBox(width: 4),
+                              Expanded(
+                                child: Text(
+                                  city,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(
+                                    color: Color(0xFF475569),
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
                         ],
                       ),
                     ),
                   ],
                 ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 7),
-          AgentLevelBadge(
-            agent: agent,
-            compact: true,
-            showLevelNumber: true,
-            maxWidth: compact ? 145 : 165,
-          ),
-          const SizedBox(height: 7),
-          _TinyMeta(icon: Icons.location_on_rounded, text: city),
-          const SizedBox(height: 4),
-          _TinyMeta(
-            icon: Icons.badge_outlined,
-            text: context.tr('Người đăng tin trên NhaWow'),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            context.tr(
-              'Chuyên đăng tin và tư vấn bất động sản tại {city}',
-              {'city': city},
-            ),
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
-              color: Color(0xFF334D68),
-              fontSize: 8.8,
-              height: 1.32,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-          const SizedBox(height: 7),
-          Wrap(
-            spacing: 4,
-            runSpacing: 4,
-            children: [
-              _AgentTag(icon: Icons.home_work_outlined, label: context.tr('Tin nhà đất')),
-              _AgentTag(icon: Icons.forum_outlined, label: context.tr('Tư vấn trực tiếp')),
-              _AgentTag(icon: Icons.public_rounded, label: city),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Row(
-            children: [
-              Expanded(
-                child: _HeroAction(
-                  icon: Icons.chat_bubble_outline_rounded,
-                  title: context.tr('Nhắn tin'),
-                  subtitle: context.tr('Tư vấn trực tuyến'),
-                  color: const Color(0xFF087CF0),
-                  onTap: onChat,
-                ),
-              ),
-              const SizedBox(width: 4),
-              Expanded(
-                child: _HeroAction(
-                  icon: Icons.phone_rounded,
-                  title: agent.phone.trim().isEmpty ? context.tr('Gọi điện') : agent.phone,
-                  subtitle: context.tr('Gọi điện trực tiếp'),
-                  color: const Color(0xFF16A34A),
-                  onTap: onPhone,
-                ),
-              ),
-              const SizedBox(width: 4),
-              Expanded(
-                child: _HeroAction(
-                  icon: Icons.home_work_rounded,
-                  title: context.tr('Xem tất cả'),
-                  subtitle: context.tr(
-                    '{count} tin đang có',
-                    {'count': listingCount},
+                const SizedBox(height: 12),
+                Text(
+                  context.tr(
+                    'Chuyên đăng tin và tư vấn bất động sản tại {city}.',
+                    {'city': city},
                   ),
-                  color: const Color(0xFF168AE6),
-                  onTap: onViewListings,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: Color(0xFF40536A),
+                    fontSize: 12,
+                    height: 1.38,
+                    fontWeight: FontWeight.w500,
+                  ),
                 ),
-              ),
-            ],
+                const SizedBox(height: 13),
+                Container(
+                  decoration: const BoxDecoration(
+                    border: Border(
+                      top: BorderSide(color: Color(0xFFE9EDF3)),
+                      bottom: BorderSide(color: Color(0xFFE9EDF3)),
+                    ),
+                  ),
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: _ProfileStat(
+                          icon: Icons.description_outlined,
+                          iconColor: const Color(0xFF3987F5),
+                          iconBackground: const Color(0xFFEDF5FF),
+                          value: '${profile.totalPublishedListings}',
+                          label: context.tr('tin đăng'),
+                        ),
+                      ),
+                      const _StatDivider(),
+                      Expanded(
+                        child: _ProfileStat(
+                          icon: Icons.visibility_outlined,
+                          iconColor: const Color(0xFF18A768),
+                          iconBackground: const Color(0xFFECFBF4),
+                          value: _formatCompactNumber(profile.totalViewCount),
+                          label: context.tr('lượt xem'),
+                        ),
+                      ),
+                      const _StatDivider(),
+                      Expanded(
+                        child: _ProfileStat(
+                          icon: Icons.workspace_premium_outlined,
+                          iconColor: const Color(0xFFE2A20C),
+                          iconBackground: const Color(0xFFFFF8E5),
+                          value: agent.isBroker ? agent.levelTitle : '—',
+                          label: context.tr('Cấp hồ sơ'),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    Expanded(
+                      child: SizedBox(
+                        height: 42,
+                        child: FilledButton.icon(
+                          onPressed: onChat,
+                          style: FilledButton.styleFrom(
+                            backgroundColor: const Color(0xFF0D7BEF),
+                            foregroundColor: Colors.white,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(9),
+                            ),
+                            textStyle: const TextStyle(
+                              fontSize: 12.5,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                          icon: const Icon(
+                            Icons.chat_bubble_outline_rounded,
+                            size: 17,
+                          ),
+                          label: Text(context.tr('Nhắn tin')),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: SizedBox(
+                        height: 42,
+                        child: OutlinedButton.icon(
+                          onPressed: onPhone,
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: const Color(0xFF119F5C),
+                            side: const BorderSide(
+                              color: Color(0xFF39BE81),
+                              width: 1.2,
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(9),
+                            ),
+                            textStyle: const TextStyle(
+                              fontSize: 12.5,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                          icon: const Icon(Icons.phone_rounded, size: 17),
+                          label: Text(context.tr('Gọi điện')),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                SizedBox(
+                  width: double.infinity,
+                  height: 40,
+                  child: OutlinedButton.icon(
+                    onPressed: onViewListings,
+                    style: OutlinedButton.styleFrom(
+                      backgroundColor: const Color(0xFFF8FAFD),
+                      foregroundColor: const Color(0xFF3677C9),
+                      side: const BorderSide(color: Color(0xFFE3E9F1)),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(9),
+                      ),
+                      textStyle: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    icon: const Icon(Icons.home_work_outlined, size: 16),
+                    label: Text(
+                      context.tr(
+                        'Xem {count} tin đăng',
+                        {'count': profile.totalPublishedListings},
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
+          if (isLoading)
+            const Positioned(
+              top: 0,
+              left: 0,
+              right: 0,
+              child: LinearProgressIndicator(minHeight: 2),
+            ),
         ],
       ),
     );
   }
 }
 
-class _AgentHeroStats extends StatelessWidget {
-  const _AgentHeroStats({
-    required this.profile,
-    required this.onCopy,
-    required this.onFacebook,
-    required this.onZalo,
-    required this.compact,
-  });
-
-  final AgentProfileModel profile;
-  final VoidCallback onCopy;
-  final VoidCallback onFacebook;
-  final VoidCallback onZalo;
-  final bool compact;
+class _PublicProfileBadge extends StatelessWidget {
+  const _PublicProfileBadge();
 
   @override
   Widget build(BuildContext context) {
-    final agent = profile.agent;
     return Container(
-      margin: const EdgeInsets.fromLTRB(0, 8, 7, 8),
-      padding: EdgeInsets.all(compact ? 5 : 7),
+      constraints: const BoxConstraints(maxWidth: 105),
+      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 4),
       decoration: BoxDecoration(
-        color: const Color(0xF5FFFFFF),
-        borderRadius: BorderRadius.circular(13),
-        border: Border.all(color: const Color(0xFFDCE5EF)),
-        boxShadow: const [
-          BoxShadow(color: Color(0x110F2942), blurRadius: 10, offset: Offset(0, 4)),
-        ],
+        color: const Color(0xFFFFF8E8),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: const Color(0xFFFFE0A3)),
       ),
-      child: Column(
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          _StatTile(
-            icon: Icons.home_work_rounded,
-            iconColor: const Color(0xFF2D7EF7),
-            iconBackground: const Color(0xFFEAF3FF),
-            value: '${profile.totalPublishedListings}',
-            title: context.tr('Số tin đăng'),
-            subtitle: context.tr('Tin đã đăng thật'),
+          const Icon(
+            Icons.verified_user_outlined,
+            size: 11,
+            color: Color(0xFFD89A16),
           ),
-          const SizedBox(height: 5),
-          _StatTile(
-            icon: Icons.visibility_rounded,
-            iconColor: const Color(0xFF17A34A),
-            iconBackground: const Color(0xFFE7FBEF),
-            value: _formatCompactNumber(profile.totalViewCount),
-            title: context.tr('Tổng lượt xem'),
-            subtitle: context.tr('Tất cả tin đăng'),
-          ),
-          const SizedBox(height: 5),
-          _StatTile(
-            icon: Icons.workspace_premium_rounded,
-            iconColor: const Color(0xFFF59E0B),
-            iconBackground: const Color(0xFFFFF5DD),
-            value: agent.isBroker ? agent.levelTitle : '—',
-            title: context.tr('Cấp hồ sơ'),
-            subtitle: agent.cleanLevelName,
-          ),
-          const SizedBox(height: 5),
-          _StatTile(
-            icon: Icons.location_city_rounded,
-            iconColor: const Color(0xFF7C3AED),
-            iconBackground: const Color(0xFFF0EAFE),
-            value: profile.mainCity.isEmpty ? '—' : profile.mainCity,
-            title: context.tr('Khu vực chính'),
-            subtitle: context.tr('Thị trường đang hoạt động'),
-            valueMaxLines: 1,
-          ),
-          const SizedBox(height: 6),
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  context.tr('Chia sẻ hồ sơ:'),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: Color(0xFF52677D),
-                    fontSize: 7.5,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
+          const SizedBox(width: 4),
+          Flexible(
+            child: Text(
+              context.tr('Hồ sơ công khai'),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                color: Color(0xFFB57A06),
+                fontSize: 9.5,
+                height: 1,
+                fontWeight: FontWeight.w800,
               ),
-              _ShareCircle(label: 'f', onTap: onFacebook, background: const Color(0xFF1877F2)),
-              const SizedBox(width: 4),
-              _ShareCircle(label: 'Za', onTap: onZalo, background: const Color(0xFF168AE6)),
-              const SizedBox(width: 4),
-              _ShareCircle(icon: Icons.link_rounded, onTap: onCopy, background: const Color(0xFF94A3B8)),
-            ],
+            ),
           ),
         ],
       ),
@@ -662,115 +647,60 @@ class _AgentHeroStats extends StatelessWidget {
   }
 }
 
-class _StatTile extends StatelessWidget {
-  const _StatTile({
+class _ProfileStat extends StatelessWidget {
+  const _ProfileStat({
     required this.icon,
     required this.iconColor,
     required this.iconBackground,
     required this.value,
-    required this.title,
-    required this.subtitle,
-    this.valueMaxLines = 1,
+    required this.label,
   });
 
   final IconData icon;
   final Color iconColor;
   final Color iconBackground;
   final String value;
-  final String title;
-  final String subtitle;
-  final int valueMaxLines;
+  final String label;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 5),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(9),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 24,
-            height: 24,
-            alignment: Alignment.center,
-            decoration: BoxDecoration(color: iconBackground, shape: BoxShape.circle),
-            child: Icon(icon, color: iconColor, size: 13),
-          ),
-          const SizedBox(width: 5),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  value,
-                  maxLines: valueMaxLines,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: Color(0xFF172033),
-                    fontSize: 11,
-                    height: 1,
-                    fontWeight: FontWeight.w900,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  title,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: Color(0xFF263B53),
-                    fontSize: 7,
-                    height: 1,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  subtitle,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: Color(0xFF75869A),
-                    fontSize: 6.3,
-                    height: 1,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _TinyMeta extends StatelessWidget {
-  const _TinyMeta({required this.icon, required this.text});
-
-  final IconData icon;
-  final String text;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
+    return Column(
+      mainAxisSize: MainAxisSize.min,
       children: [
-        Icon(icon, size: 9.5, color: const Color(0xFF168AE6)),
-        const SizedBox(width: 4),
-        Expanded(
-          child: Text(
-            text,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
-              color: Color(0xFF314860),
-              fontSize: 8,
-              height: 1,
-              fontWeight: FontWeight.w700,
-            ),
+        Container(
+          width: 25,
+          height: 25,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: iconBackground,
+            shape: BoxShape.circle,
+          ),
+          child: Icon(icon, size: 14, color: iconColor),
+        ),
+        const SizedBox(height: 5),
+        Text(
+          value,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          textAlign: TextAlign.center,
+          style: const TextStyle(
+            color: AppTheme.navy,
+            fontSize: 15,
+            height: 1,
+            fontWeight: FontWeight.w900,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          label,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          textAlign: TextAlign.center,
+          style: const TextStyle(
+            color: Color(0xFF75859A),
+            fontSize: 9.5,
+            height: 1,
+            fontWeight: FontWeight.w600,
           ),
         ),
       ],
@@ -778,272 +708,15 @@ class _TinyMeta extends StatelessWidget {
   }
 }
 
-class _AgentTag extends StatelessWidget {
-  const _AgentTag({required this.icon, required this.label});
-
-  final IconData icon;
-  final String label;
+class _StatDivider extends StatelessWidget {
+  const _StatDivider();
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      constraints: const BoxConstraints(maxWidth: 92),
-      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 3),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.9),
-        borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: const Color(0xFFDCE7F0)),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 8, color: const Color(0xFF19A64A)),
-          const SizedBox(width: 3),
-          Flexible(
-            child: Text(
-              label,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                color: Color(0xFF38516A),
-                fontSize: 7,
-                height: 1,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _HeroAction extends StatelessWidget {
-  const _HeroAction({
-    required this.icon,
-    required this.title,
-    required this.subtitle,
-    required this.color,
-    required this.onTap,
-  });
-
-  final IconData icon;
-  final String title;
-  final String subtitle;
-  final Color color;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: color,
-      borderRadius: BorderRadius.circular(6),
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: onTap,
-        child: SizedBox(
-          height: 32,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 3),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(icon, size: 10, color: Colors.white),
-                const SizedBox(width: 3),
-                Flexible(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        title,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 7.3,
-                          height: 1,
-                          fontWeight: FontWeight.w900,
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        subtitle,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          color: Color(0xE6FFFFFF),
-                          fontSize: 5.7,
-                          height: 1,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _ShareCircle extends StatelessWidget {
-  const _ShareCircle({
-    this.label,
-    this.icon,
-    required this.onTap,
-    required this.background,
-  });
-
-  final String? label;
-  final IconData? icon;
-  final VoidCallback onTap;
-  final Color background;
-
-  @override
-  Widget build(BuildContext context) {
-    return InkWell(
-      borderRadius: BorderRadius.circular(999),
-      onTap: onTap,
-      child: Container(
-        width: 22,
-        height: 22,
-        alignment: Alignment.center,
-        decoration: BoxDecoration(color: background, shape: BoxShape.circle),
-        child: icon != null
-            ? Icon(icon, size: 13, color: Colors.white)
-            : Text(
-                label ?? '',
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 8,
-                  height: 1,
-                  fontWeight: FontWeight.w900,
-                ),
-              ),
-      ),
-    );
-  }
-}
-
-class _AgentTrustStrip extends StatelessWidget {
-  const _AgentTrustStrip({required this.city});
-
-  final String city;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 8),
-      child: Row(
-        children: [
-          Expanded(
-            child: _TrustItem(
-              icon: Icons.shield_outlined,
-              title: context.tr('Hồ sơ công khai'),
-              subtitle: context.tr('Thông tin người đăng'),
-              background: const Color(0xFFEAF3FF),
-              foreground: const Color(0xFF277CF3),
-            ),
-          ),
-          Expanded(
-            child: _TrustItem(
-              icon: Icons.person_pin_circle_outlined,
-              title: context.tr('Liên hệ trực tiếp'),
-              subtitle: context.tr('Nhắn tin hoặc gọi điện'),
-              background: const Color(0xFFE8FAEF),
-              foreground: const Color(0xFF16A34A),
-            ),
-          ),
-          Expanded(
-            child: _TrustItem(
-              icon: Icons.workspace_premium_outlined,
-              title: context.tr('Cấp bậc rõ ràng'),
-              subtitle: context.tr('Uy tín môi giới'),
-              background: const Color(0xFFFFF4DF),
-              foreground: const Color(0xFFE49A0C),
-            ),
-          ),
-          Expanded(
-            child: _TrustItem(
-              icon: Icons.layers_outlined,
-              title: context.tr('Tin đăng tập trung'),
-              subtitle: city,
-              background: const Color(0xFFF0EAFE),
-              foreground: const Color(0xFF7C3AED),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _TrustItem extends StatelessWidget {
-  const _TrustItem({
-    required this.icon,
-    required this.title,
-    required this.subtitle,
-    required this.background,
-    required this.foreground,
-  });
-
-  final IconData icon;
-  final String title;
-  final String subtitle;
-  final Color background;
-  final Color foreground;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 2),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Container(
-            width: 25,
-            height: 25,
-            alignment: Alignment.center,
-            decoration: BoxDecoration(color: background, shape: BoxShape.circle),
-            child: Icon(icon, size: 13, color: foreground),
-          ),
-          const SizedBox(width: 4),
-          Flexible(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: Color(0xFF263B53),
-                    fontSize: 7.3,
-                    height: 1,
-                    fontWeight: FontWeight.w900,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  subtitle,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: Color(0xFF738397),
-                    fontSize: 5.8,
-                    height: 1,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
+      width: 1,
+      height: 54,
+      color: const Color(0xFFE9EDF3),
     );
   }
 }
@@ -1074,11 +747,18 @@ class _AgentListingFilters extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.fromLTRB(9, 8, 9, 10),
+      padding: const EdgeInsets.fromLTRB(14, 8, 14, 12),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(15),
-        border: Border.all(color: const Color(0xFFE4EAF1)),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: const Color(0xFFE4E9F0)),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x0C0F2942),
+            blurRadius: 18,
+            offset: Offset(0, 5),
+          ),
+        ],
       ),
       child: Column(
         children: [
@@ -1100,96 +780,252 @@ class _AgentListingFilters extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 10),
           Row(
             children: [
               Expanded(
-                child: SegmentedButton<String>(
-                  showSelectedIcon: false,
-                  segments: [
-                    ButtonSegment<String>(
-                      value: 'sale',
-                      label: Text(
-                        context.tr(assetCategory == 'house' ? 'Mua nhà' : 'Đất bán'),
-                      ),
-                    ),
-                    ButtonSegment<String>(
-                      value: 'rent',
-                      label: Text(
-                        context.tr(assetCategory == 'house' ? 'Thuê nhà' : 'Mặt bằng'),
-                      ),
-                    ),
-                  ],
-                  selected: {mode},
-                  onSelectionChanged: (values) => onModeChanged(values.first),
-                  style: const ButtonStyle(
-                    visualDensity: VisualDensity(horizontal: -3, vertical: -3),
-                  ),
+                child: _ModeSelector(
+                  assetCategory: assetCategory,
+                  mode: mode,
+                  onChanged: onModeChanged,
                 ),
               ),
-              const SizedBox(width: 8),
-              DropdownButtonHideUnderline(
-                child: DropdownButton<String>(
-                  value: sortBy,
-                  isDense: true,
-                  borderRadius: BorderRadius.circular(12),
-                  items: [
-                    DropdownMenuItem(value: 'newest', child: Text(context.tr('Mới nhất'))),
-                    DropdownMenuItem(value: 'oldest', child: Text(context.tr('Cũ nhất'))),
-                    DropdownMenuItem(value: 'price_asc', child: Text(context.tr('Giá tăng dần'))),
-                    DropdownMenuItem(value: 'price_desc', child: Text(context.tr('Giá giảm dần'))),
-                  ],
-                  onChanged: (value) {
-                    if (value != null) onSortChanged(value);
-                  },
-                ),
+              const SizedBox(width: 10),
+              _SortMenu(
+                value: sortBy,
+                onChanged: onSortChanged,
               ),
             ],
           ),
-          const SizedBox(height: 8),
-          TextField(
-            controller: keywordController,
-            onChanged: onKeywordChanged,
-            textInputAction: TextInputAction.search,
-            decoration: InputDecoration(
-              isDense: true,
-              prefixIcon: const Icon(Icons.search_rounded, size: 19),
-              suffixIcon: keywordController.text.isEmpty
-                  ? null
-                  : IconButton(
-                      onPressed: () {
-                        keywordController.clear();
-                        onKeywordChanged('');
-                      },
-                      icon: const Icon(Icons.close_rounded, size: 18),
-                    ),
-              hintText: context.tr('Tìm trong tin đăng của người này...'),
-              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
-            ),
-          ),
-          const SizedBox(height: 7),
-          Row(
-            children: [
-              Text(
-                context.tr('Bất động sản đang hiển thị'),
-                style: const TextStyle(
-                  color: AppTheme.navy,
-                  fontSize: 14,
-                  fontWeight: FontWeight.w900,
+          const SizedBox(height: 10),
+          SizedBox(
+            height: 40,
+            child: TextField(
+              controller: keywordController,
+              onChanged: onKeywordChanged,
+              textInputAction: TextInputAction.search,
+              style: const TextStyle(fontSize: 12.5),
+              decoration: InputDecoration(
+                isDense: true,
+                filled: true,
+                fillColor: Colors.white,
+                prefixIcon: const Icon(Icons.search_rounded, size: 19),
+                suffixIcon: keywordController.text.isEmpty
+                    ? null
+                    : IconButton(
+                        onPressed: () {
+                          keywordController.clear();
+                          onKeywordChanged('');
+                        },
+                        icon: const Icon(Icons.close_rounded, size: 17),
+                      ),
+                hintText:
+                    context.tr('Tìm trong tin đăng của người này...'),
+                hintStyle: const TextStyle(
+                  color: Color(0xFF9AA8B8),
+                  fontSize: 11.5,
+                ),
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 9,
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10),
+                  borderSide: const BorderSide(color: Color(0xFFE1E7EF)),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10),
+                  borderSide: const BorderSide(color: Color(0xFF77AEEE)),
                 ),
               ),
-              const Spacer(),
+            ),
+          ),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  context.tr('Bất động sản đang hiển thị'),
+                  style: const TextStyle(
+                    color: AppTheme.navy,
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ),
               Text(
                 context.tr('{count} tin đăng', {'count': resultCount}),
                 style: const TextStyle(
-                  color: Color(0xFF64748B),
-                  fontSize: 11,
+                  color: Color(0xFF7C8B9D),
+                  fontSize: 10.5,
                   fontWeight: FontWeight.w700,
                 ),
               ),
             ],
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _ModeSelector extends StatelessWidget {
+  const _ModeSelector({
+    required this.assetCategory,
+    required this.mode,
+    required this.onChanged,
+  });
+
+  final String assetCategory;
+  final String mode;
+  final ValueChanged<String> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final saleLabel = assetCategory == 'house' ? 'Mua nhà' : 'Đất bán';
+    final rentLabel = assetCategory == 'house' ? 'Thuê nhà' : 'Mặt bằng';
+
+    return Container(
+      height: 34,
+      padding: const EdgeInsets.all(2),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF4F6F9),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: const Color(0xFFE7EBF1)),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: _ModeOption(
+              label: context.tr(saleLabel),
+              selected: mode == 'sale',
+              onTap: () => onChanged('sale'),
+            ),
+          ),
+          Expanded(
+            child: _ModeOption(
+              label: context.tr(rentLabel),
+              selected: mode == 'rent',
+              onTap: () => onChanged('rent'),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ModeOption extends StatelessWidget {
+  const _ModeOption({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(8),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 170),
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: selected ? const Color(0xFF0B7EEA) : Colors.transparent,
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Text(
+            label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              color: selected ? Colors.white : const Color(0xFF69798D),
+              fontSize: 10.5,
+              fontWeight: selected ? FontWeight.w800 : FontWeight.w700,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _SortMenu extends StatelessWidget {
+  const _SortMenu({required this.value, required this.onChanged});
+
+  final String value;
+  final ValueChanged<String> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    String labelFor(String raw) {
+      switch (raw) {
+        case 'oldest':
+          return context.tr('Cũ nhất');
+        case 'price_asc':
+          return context.tr('Giá tăng dần');
+        case 'price_desc':
+          return context.tr('Giá giảm dần');
+        case 'newest':
+        default:
+          return context.tr('Mới nhất');
+      }
+    }
+
+    return PopupMenuButton<String>(
+      initialValue: value,
+      onSelected: onChanged,
+      position: PopupMenuPosition.under,
+      itemBuilder: (_) => [
+        PopupMenuItem(value: 'newest', child: Text(context.tr('Mới nhất'))),
+        PopupMenuItem(value: 'oldest', child: Text(context.tr('Cũ nhất'))),
+        PopupMenuItem(
+          value: 'price_asc',
+          child: Text(context.tr('Giá tăng dần')),
+        ),
+        PopupMenuItem(
+          value: 'price_desc',
+          child: Text(context.tr('Giá giảm dần')),
+        ),
+      ],
+      child: Container(
+        height: 34,
+        constraints: const BoxConstraints(minWidth: 104),
+        padding: const EdgeInsets.symmetric(horizontal: 10),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: const Color(0xFFE1E7EF)),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Flexible(
+              child: Text(
+                labelFor(value),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  color: Color(0xFF53657A),
+                  fontSize: 10.5,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+            const SizedBox(width: 5),
+            const Icon(
+              Icons.keyboard_arrow_down_rounded,
+              size: 17,
+              color: Color(0xFF64748B),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -1211,12 +1047,12 @@ class _TopTab extends StatelessWidget {
     return InkWell(
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 9),
+        padding: const EdgeInsets.symmetric(vertical: 10),
         decoration: BoxDecoration(
           border: Border(
             bottom: BorderSide(
-              color: selected ? AppTheme.primaryDark : Colors.transparent,
-              width: 2.5,
+              color: selected ? const Color(0xFF0B7EEA) : Colors.transparent,
+              width: 2.4,
             ),
           ),
         ),
@@ -1224,9 +1060,9 @@ class _TopTab extends StatelessWidget {
           label,
           textAlign: TextAlign.center,
           style: TextStyle(
-            color: selected ? AppTheme.navy : const Color(0xFF64748B),
-            fontSize: 13,
-            fontWeight: selected ? FontWeight.w900 : FontWeight.w700,
+            color: selected ? AppTheme.navy : const Color(0xFF7B899A),
+            fontSize: 12.5,
+            fontWeight: selected ? FontWeight.w900 : FontWeight.w600,
           ),
         ),
       ),
@@ -1243,20 +1079,24 @@ class _InlineError extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.fromLTRB(11, 8, 8, 8),
+      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: const Color(0xFFFFF3F2),
+        color: const Color(0xFFFFF4F4),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFFFCBC6)),
+        border: Border.all(color: const Color(0xFFFFD2D2)),
       ),
       child: Row(
         children: [
-          const Icon(Icons.error_outline_rounded, color: AppTheme.danger, size: 18),
-          const SizedBox(width: 7),
+          const Icon(Icons.error_outline_rounded, color: Color(0xFFC84545)),
+          const SizedBox(width: 8),
           Expanded(
             child: Text(
               message,
-              style: const TextStyle(color: Color(0xFF8B2E26), fontSize: 11),
+              style: const TextStyle(
+                color: Color(0xFF8F3131),
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ),
           TextButton(

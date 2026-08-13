@@ -197,7 +197,7 @@ class PropertyCard extends StatelessWidget {
     final current = store.propertyById(property.id) ?? property;
     final pricePerSquareMeter = _formatPricePerSquareMeter(context, current);
     final areaLabel = _formatArea(current.area);
-    final informationLine = _buildInformationLine(current);
+    final informationLine = _buildInformationLine(context, current);
 
     return Card(
       margin: EdgeInsets.zero,
@@ -366,7 +366,7 @@ class PropertyCard extends StatelessWidget {
                           const SizedBox(width: 5),
                           Expanded(
                             child: Text(
-                              context.tr(informationLine),
+                              informationLine,
                               maxLines: 1,
                               softWrap: false,
                               overflow: TextOverflow.ellipsis,
@@ -467,7 +467,10 @@ class PropertyCard extends StatelessWidget {
     );
   }
 
-  static String _buildInformationLine(PropertyModel property) {
+  static String _buildInformationLine(
+    BuildContext context,
+    PropertyModel property,
+  ) {
     final values = <String>[];
 
     for (final tag in property.infoTags) {
@@ -481,10 +484,12 @@ class PropertyCard extends StatelessWidget {
         continue;
       }
 
-      values.add(value);
+      values.add(context.tr(value));
     }
 
-    return values.isEmpty ? 'Chưa cập nhật tiện ích' : values.join(' • ');
+    return values.isEmpty
+        ? context.tr('Chưa cập nhật tiện ích')
+        : values.join(' • ');
   }
 
   static String _formatArea(num area) {

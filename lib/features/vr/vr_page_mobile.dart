@@ -704,7 +704,7 @@ class _VrPageState extends State<VrPage> {
       ..hideCurrentSnackBar()
       ..showSnackBar(
         SnackBar(
-          content: Text(message),
+          content: Text(context.tr(message)),
           behavior: SnackBarBehavior.floating,
           duration: const Duration(seconds: 2),
         ),
@@ -1169,7 +1169,7 @@ class _VrPageState extends State<VrPage> {
 
   String _sceneTitle(VrSceneModel scene) {
     final title = scene.title.trim();
-    return title.isEmpty ? scene.sceneKey : title;
+    return context.tr(title.isEmpty ? scene.sceneKey : title);
   }
 }
 
@@ -1234,7 +1234,7 @@ class _VrHotspotButtonState extends State<_VrHotspotButton>
         ? (widget.isNavigation
             ? context.tr('Đi tới phòng')
             : context.tr('Thông tin'))
-        : widget.label.trim();
+        : context.tr(widget.label.trim());
 
     if (!widget.isNavigation) {
       return Tooltip(

@@ -307,7 +307,7 @@ class _SearchPageState extends State<SearchPage> {
                     border: Border.all(color: const Color(0xFFFFC9C2)),
                   ),
                   child: Text(
-                    _searchError!,
+                    context.tr(_searchError!),
                     style: const TextStyle(
                       color: Color(0xFFB42318),
                       fontWeight: FontWeight.w600,

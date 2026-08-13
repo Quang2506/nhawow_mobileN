@@ -107,8 +107,10 @@ class _WalletPageState extends State<WalletPage> {
                           ? 'Chưa có giao dịch'
                           : 'Không tải được ví NhaWOW',
                     ),
-                    message: store.walletError ??
-                        context.tr('Các giao dịch nạp và chi tiêu sẽ hiển thị tại đây.'),
+                    message: context.tr(
+                      store.walletError ??
+                          'Các giao dịch nạp và chi tiêu sẽ hiển thị tại đây.',
+                    ),
                     action: store.walletError == null
                         ? null
                         : OutlinedButton.icon(
@@ -145,7 +147,13 @@ class _WalletPageState extends State<WalletPage> {
                           ),
                           subtitle: Text(_formatDateTime(item.createdAt)),
                           trailing: Text(
-                            '${item.isCredit ? '+' : '-'}${_formatMoney(item.amount.abs())} đ',
+                            context.tr(
+                              '{sign}{amount} đ',
+                              {
+                                'sign': item.isCredit ? '+' : '-',
+                                'amount': _formatMoney(item.amount.abs()),
+                              },
+                            ),
                             style: TextStyle(
                               color: item.isCredit
                                   ? Colors.green
@@ -206,7 +214,12 @@ class _WalletPageState extends State<WalletPage> {
                 children: options
                     .map(
                       (value) => ActionChip(
-                        label: Text('${_formatMoney(value)} đ'),
+                        label: Text(
+                          context.tr(
+                            '{amount} đ',
+                            {'amount': _formatMoney(value)},
+                          ),
+                        ),
                         onPressed: () => Navigator.of(sheetContext).pop(value),
                       ),
                     )
@@ -282,7 +295,7 @@ class _WalletPageState extends State<WalletPage> {
 
   static void _showError(BuildContext context, String message) {
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message)),
+      SnackBar(content: Text(context.tr(message))),
     );
   }
 }
@@ -318,7 +331,7 @@ class _BalanceCard extends StatelessWidget {
           ),
           const SizedBox(height: 6),
           Text(
-            '${_formatMoney(balance)} đ',
+            context.tr('{amount} đ', {'amount': _formatMoney(balance)}),
             style: const TextStyle(
               color: Colors.white,
               fontSize: 30,
@@ -380,7 +393,7 @@ class _TopupHistoryTile extends StatelessWidget {
           ),
         ),
         title: Text(
-          '${_formatMoney(topup.amount)} đ · ${topup.paymentProvider}',
+          '${context.tr('{amount} đ', {'amount': _formatMoney(topup.amount)})} · ${topup.paymentProvider}',
           style: const TextStyle(
             color: AppTheme.navy,
             fontWeight: FontWeight.w800,
@@ -476,7 +489,7 @@ class _WalletCheckoutSheetState extends State<_WalletCheckoutSheet> {
         _status = 'cancelled';
       });
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(message)),
+        SnackBar(content: Text(context.tr(message))),
       );
     } catch (error) {
       if (mounted) setState(() => _error = error.toString());
@@ -534,7 +547,10 @@ class _WalletCheckoutSheetState extends State<_WalletCheckoutSheet> {
               ),
               const SizedBox(height: 6),
               Text(
-                '${_formatMoney(checkout.amount)} đ',
+                context.tr(
+                  '{amount} đ',
+                  {'amount': _formatMoney(checkout.amount)},
+                ),
                 style: const TextStyle(
                   color: AppTheme.danger,
                   fontSize: 28,

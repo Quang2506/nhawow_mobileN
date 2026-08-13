@@ -190,7 +190,7 @@ class _PartnerPropertiesPageState extends State<PartnerPropertiesPage> {
                       child: Padding(
                         padding: const EdgeInsets.all(12),
                         child: Text(
-                          store.partnerPropertyError!,
+                          context.tr(store.partnerPropertyError!),
                           style: TextStyle(
                             color: Theme.of(context).colorScheme.onErrorContainer,
                           ),
@@ -300,7 +300,7 @@ class _PartnerPropertiesPageState extends State<PartnerPropertiesPage> {
     } catch (error) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(error.toString())),
+        SnackBar(content: Text(context.tr(error.toString()))),
       );
       return;
     }
@@ -407,7 +407,7 @@ class _PartnerPropertiesPageState extends State<PartnerPropertiesPage> {
     } catch (error) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(error.toString())),
+        SnackBar(content: Text(context.tr(error.toString()))),
       );
     }
   }
@@ -464,7 +464,7 @@ class _PartnerPropertiesPageState extends State<PartnerPropertiesPage> {
   }) async {
     if (!mounted) return;
     final store = AppScope.of(context);
-    final content = <String>[featureName, property.title];
+    final content = <String>[context.tr(featureName), property.title];
     if (showFreeTopHint && store.membershipUsage.freeTopRemaining > 0) {
       content.add(
         context.tr(
@@ -472,7 +472,9 @@ class _PartnerPropertiesPageState extends State<PartnerPropertiesPage> {
         ),
       );
     } else if (featurePrice > 0) {
-      content.add('${context.tr('Giá dịch vụ')}: ${_formatMoney(featurePrice)} đ');
+      content.add(
+        '${context.tr('Giá dịch vụ')}: ${context.tr('{amount} đ', {'amount': _formatMoney(featurePrice)})}',
+      );
     }
 
     final confirmed = await showDialog<bool>(
@@ -503,7 +505,7 @@ class _PartnerPropertiesPageState extends State<PartnerPropertiesPage> {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(message),
+          content: Text(context.tr(message)),
           backgroundColor: const Color(0xFF10983F),
         ),
       );
@@ -515,7 +517,7 @@ class _PartnerPropertiesPageState extends State<PartnerPropertiesPage> {
           context: context,
           builder: (dialogContext) => AlertDialog(
             title: Text(context.tr('Số dư ví không đủ')),
-            content: Text(error.message),
+            content: Text(context.tr(error.message)),
             actions: [
               TextButton(
                 onPressed: () => Navigator.of(dialogContext).pop(false),
@@ -536,13 +538,13 @@ class _PartnerPropertiesPageState extends State<PartnerPropertiesPage> {
         }
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(error.message)),
+          SnackBar(content: Text(context.tr(error.message))),
         );
       }
     } catch (error) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(error.toString())),
+        SnackBar(content: Text(context.tr(error.toString()))),
       );
     }
   }
@@ -578,7 +580,7 @@ class _PartnerPropertiesPageState extends State<PartnerPropertiesPage> {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(message),
+          content: Text(context.tr(message)),
           backgroundColor: const Color(0xFF10983F),
         ),
       );
@@ -586,12 +588,12 @@ class _PartnerPropertiesPageState extends State<PartnerPropertiesPage> {
     } on ApiTransportException catch (error) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(error.message)),
+        SnackBar(content: Text(context.tr(error.message))),
       );
     } catch (error) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(error.toString())),
+        SnackBar(content: Text(context.tr(error.toString()))),
       );
     }
   }
@@ -627,7 +629,7 @@ class _PartnerPropertiesPageState extends State<PartnerPropertiesPage> {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(message),
+          content: Text(context.tr(message)),
           backgroundColor: const Color(0xFF10983F),
         ),
       );
@@ -635,12 +637,12 @@ class _PartnerPropertiesPageState extends State<PartnerPropertiesPage> {
     } on ApiTransportException catch (error) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(error.message)),
+        SnackBar(content: Text(context.tr(error.message))),
       );
     } catch (error) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(error.toString())),
+        SnackBar(content: Text(context.tr(error.toString()))),
       );
     }
   }
@@ -878,8 +880,8 @@ class _AddonSelectionBanner extends StatelessWidget {
   Widget build(BuildContext context) {
     final name = featureName.trim().isEmpty
         ? context.tr('Dịch vụ gia tăng')
-        : featureName.trim();
-    final description = featureDescription.trim();
+        : context.tr(featureName.trim());
+    final description = context.tr(featureDescription.trim());
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
@@ -1436,7 +1438,7 @@ class _PropertyTypeSheet extends StatelessWidget {
                       child: _SelectionTile(
                         icon: _iconForPropertyType(item.code),
                         color: AppTheme.primary,
-                        title: item.name,
+                        title: context.tr(item.name),
                         onTap: () => Navigator.of(context).pop(item),
                       ),
                     ),

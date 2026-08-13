@@ -148,7 +148,7 @@ class _AgentLevelBadgeState extends State<AgentLevelBadge>
                           ],
                           Flexible(
                             child: Text(
-                              widget.agent.cleanLevelName,
+                              context.tr(widget.agent.cleanLevelName),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                               style: TextStyle(

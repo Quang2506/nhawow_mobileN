@@ -101,7 +101,7 @@ class AuthGate {
 
   static void _showMessage(BuildContext context, String message) {
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message)),
+      SnackBar(content: Text(context.tr(message))),
     );
   }
 }

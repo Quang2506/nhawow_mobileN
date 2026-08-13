@@ -2608,7 +2608,7 @@ class _OwnerCard extends StatelessWidget {
                               const SizedBox(width: 5),
                               Expanded(
                                 child: Text(
-                                  property.updatedAgoText,
+                                  context.tr(property.updatedAgoText),
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
                                   style: const TextStyle(
@@ -2894,7 +2894,9 @@ Future<void> _sharePropertyLink(
 }
 
 void _showDetailMessage(BuildContext context, String message) {
-  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+  ScaffoldMessenger.of(context).showSnackBar(
+    SnackBar(content: Text(context.tr(message))),
+  );
 }
 
 class _BottomContactAction extends StatelessWidget {

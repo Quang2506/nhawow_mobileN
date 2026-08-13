@@ -5,6 +5,7 @@ import 'package:webview_flutter/webview_flutter.dart';
 
 import '../config/app_config.dart';
 import '../core/app_theme.dart';
+import '../l10n/app_localizations.dart';
 
 class LegalInfoPage extends StatefulWidget {
   const LegalInfoPage({super.key});
@@ -91,7 +92,7 @@ class _LegalInfoPageState extends State<LegalInfoPage> {
     final ok = await launchUrl(uri, mode: LaunchMode.externalApplication);
     if (!ok && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Không thể mở trang. Vui lòng kiểm tra lại đường dẫn website.')),
+        SnackBar(content: Text(context.tr('Không thể mở trang. Vui lòng kiểm tra lại đường dẫn website.'))),
       );
     }
   }
@@ -100,11 +101,11 @@ class _LegalInfoPageState extends State<LegalInfoPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Điều khoản và quyền riêng tư'),
+        title: Text(context.tr('Điều khoản và quyền riêng tư')),
         actions: [
           if (_supportsEmbeddedWebView)
             IconButton(
-              tooltip: 'Tải lại',
+              tooltip: context.tr('Tải lại'),
               onPressed: _reloadCurrent,
               icon: const Icon(Icons.refresh),
             ),
@@ -127,9 +128,9 @@ class _LegalInfoPageState extends State<LegalInfoPage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
-                  'Điều khoản & Chính sách',
-                  style: TextStyle(
+                Text(
+                  context.tr('Điều khoản & Chính sách'),
+                  style: const TextStyle(
                     color: Colors.white,
                     fontSize: 22,
                     fontWeight: FontWeight.w900,
@@ -137,9 +138,11 @@ class _LegalInfoPageState extends State<LegalInfoPage> {
                 ),
                 const SizedBox(height: 6),
                 Text(
-                  _supportsEmbeddedWebView
-                      ? 'Hiển thị trực tiếp nội dung từ Mobile Web ngay trong ứng dụng.'
-                      : 'Thiết bị / môi trường hiện tại không hỗ trợ WebView nhúng. Bạn vẫn có thể mở đúng nội dung từ Mobile Web bằng nút bên dưới.',
+                  context.tr(
+                    _supportsEmbeddedWebView
+                        ? 'Hiển thị trực tiếp nội dung từ Mobile Web ngay trong ứng dụng.'
+                        : 'Thiết bị / môi trường hiện tại không hỗ trợ WebView nhúng. Bạn vẫn có thể mở đúng nội dung từ Mobile Web bằng nút bên dưới.',
+                  ),
                   style: const TextStyle(color: Colors.white, height: 1.45),
                 ),
                 const SizedBox(height: 14),
@@ -234,15 +237,15 @@ class _LegalInfoPageState extends State<LegalInfoPage> {
                         borderRadius: BorderRadius.circular(16),
                         border: Border.all(color: const Color(0xFFDCEBFA)),
                       ),
-                      child: const Row(
+                      child: Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Icon(Icons.info_outline, color: AppTheme.primaryDark),
-                          SizedBox(width: 10),
+                          const Icon(Icons.info_outline, color: AppTheme.primaryDark),
+                          const SizedBox(width: 10),
                           Expanded(
                             child: Text(
-                              'Nếu bạn đang chạy app trên Windows hoặc một môi trường Flutter chưa hỗ trợ WebView nhúng, hệ thống sẽ mở nội dung bằng trình duyệt ngoài để tránh lỗi màn hình đỏ.',
-                              style: TextStyle(height: 1.45),
+                              context.tr('Nếu bạn đang chạy app trên Windows hoặc một môi trường Flutter chưa hỗ trợ WebView nhúng, hệ thống sẽ mở nội dung bằng trình duyệt ngoài để tránh lỗi màn hình đỏ.'),
+                              style: const TextStyle(height: 1.45),
                             ),
                           ),
                         ],
@@ -281,7 +284,7 @@ class _LegalTabButton extends StatelessWidget {
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
           child: Text(
-            title,
+            context.tr(title),
             textAlign: TextAlign.center,
             style: TextStyle(
               color: active ? AppTheme.navy : Colors.white,
@@ -336,7 +339,7 @@ class _ExternalOpenCard extends StatelessWidget {
               const SizedBox(width: 12),
               Expanded(
                 child: Text(
-                  title,
+                  context.tr(title),
                   style: const TextStyle(
                     color: AppTheme.navy,
                     fontSize: 17,
@@ -347,7 +350,7 @@ class _ExternalOpenCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 12),
-          Text(description, style: const TextStyle(height: 1.5)),
+          Text(context.tr(description), style: const TextStyle(height: 1.5)),
           const SizedBox(height: 10),
           Text(
             url,
@@ -359,7 +362,7 @@ class _ExternalOpenCard extends StatelessWidget {
             child: FilledButton.icon(
               onPressed: onOpen,
               icon: const Icon(Icons.open_in_browser),
-              label: const Text('Mở nội dung'),
+              label: Text(context.tr('Mở nội dung')),
             ),
           ),
         ],

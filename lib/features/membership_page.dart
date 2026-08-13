@@ -141,10 +141,10 @@ class _MembershipPageState extends State<MembershipPage> {
                             child: EmptyState(
                               icon: Icons.workspace_premium_outlined,
                               title: context.tr('Không tải được gói hội viên'),
-                              message: store.membershipError ??
-                                  context.tr(
+                              message: context.tr(
+                                store.membershipError ??
                                     'Vui lòng kiểm tra kết nối và thử lại.',
-                                  ),
+                              ),
                               action: OutlinedButton.icon(
                                 onPressed: () =>
                                     store.refreshMembership(force: true),
@@ -238,7 +238,7 @@ class _MembershipPageState extends State<MembershipPage> {
                                     type: _OrderType.plan,
                                     code: plan.code,
                                     name:
-                                        '${context.tr('Gói')} ${plan.name} (1 ${context.tr('tháng')})',
+                                        '${context.tr('Gói')} ${context.tr(plan.name)} (1 ${context.tr('tháng')})',
                                     price: plan.price,
                                   ),
                                 )
@@ -290,7 +290,7 @@ class _MembershipPageState extends State<MembershipPage> {
                   _SelectedOrder(
                     type: _OrderType.posting,
                     code: item.code,
-                    name: item.name,
+                    name: context.tr(item.name),
                     price: item.price,
                   ),
                 ),
@@ -333,7 +333,7 @@ class _MembershipPageState extends State<MembershipPage> {
                               _SelectedOrder(
                                 type: _OrderType.posting,
                                 code: entry.value.code,
-                                name: entry.value.name,
+                                name: context.tr(entry.value.name),
                                 price: entry.value.price,
                               ),
                             ),
@@ -384,9 +384,9 @@ class _MembershipPageState extends State<MembershipPage> {
                             _SelectedOrder(
                               type: _OrderType.addon,
                               code: feature.code,
-                              name: feature.name,
+                              name: context.tr(feature.name),
                               price: feature.price,
-                              description: feature.description,
+                              description: context.tr(feature.description),
                             ),
                           ),
                         ),
@@ -539,7 +539,7 @@ class _MembershipPageState extends State<MembershipPage> {
       context: context,
       builder: (dialogContext) => AlertDialog(
         title: Text(context.tr('Số dư ví không đủ')),
-        content: Text(message),
+        content: Text(context.tr(message)),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(false),
@@ -565,7 +565,7 @@ class _MembershipPageState extends State<MembershipPage> {
   void _showSuccess(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(message),
+        content: Text(context.tr(message)),
         backgroundColor: const Color(0xFF10983F),
       ),
     );
@@ -573,7 +573,7 @@ class _MembershipPageState extends State<MembershipPage> {
 
   void _showError(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message)),
+      SnackBar(content: Text(context.tr(message))),
     );
   }
 }
@@ -607,7 +607,10 @@ class _CompactUsagePanel extends StatelessWidget {
                   iconColor: const Color(0xFF10983F),
                   iconBackground: const Color(0xFFEAF8EF),
                   label: context.tr('Ví hiện có'),
-                  value: '${_formatMoney(store.walletBalance)} đ',
+                  value: context.tr(
+                    '{amount} đ',
+                    {'amount': _formatMoney(store.walletBalance)},
+                  ),
                 ),
               ),
               SizedBox(
@@ -617,7 +620,7 @@ class _CompactUsagePanel extends StatelessWidget {
                   iconColor: const Color(0xFF2F80ED),
                   iconBackground: const Color(0xFFEAF1FF),
                   label: context.tr('Gói hiện tại'),
-                  value: planName,
+                  value: context.tr(planName),
                 ),
               ),
               SizedBox(
@@ -906,7 +909,7 @@ class _MobilePlanCard extends StatelessWidget {
         : '🎁 ${plan.freeTopLimit} ${context.tr('tin Ghim 7 ngày')}';
     final display = plan.label.trim().isEmpty
         ? context.tr('Sắp xếp thường')
-        : '${context.tr('Ưu tiên + Nhãn')} [${plan.label}]';
+        : '${context.tr('Ưu tiên + Nhãn')} [${context.tr(plan.label)}]';
 
     return Stack(
       clipBehavior: Clip.none,
@@ -953,7 +956,7 @@ class _MobilePlanCard extends StatelessWidget {
                       const SizedBox(width: 4),
                       Expanded(
                         child: Text(
-                          '${context.tr('Gói')} ${plan.name}',
+                          '${context.tr('Gói')} ${context.tr(plan.name)}',
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(
@@ -975,7 +978,9 @@ class _MobilePlanCard extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
                       Text(
-                        plan.price <= 0 ? '0 đ' : _formatMoneyK(plan.price),
+                        plan.price <= 0
+                            ? context.tr('{amount} đ', {'amount': '0'})
+                            : _formatMoneyK(plan.price),
                         style: const TextStyle(
                           color: Color(0xFF1E293B),
                           fontSize: 19,
@@ -1009,7 +1014,7 @@ class _MobilePlanCard extends StatelessWidget {
                           borderRadius: BorderRadius.circular(5),
                         ),
                         child: Text(
-                          '${context.tr('Chỉ từ')} ${_unitPrice(plan.price, plan.monthlyPostLimit)}',
+                          '${context.tr('Chỉ từ')} ${_unitPrice(context, plan.price, plan.monthlyPostLimit)}',
                           style: const TextStyle(
                             color: Color(0xFF087B30),
                             fontSize: 8,
@@ -1212,7 +1217,7 @@ class _PostingSingleRow extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  '${item.name}: ${_formatMoneyK(item.price)} / ${context.tr('tin')}',
+                  '${context.tr(item.name)}: ${_formatMoneyK(item.price)} / ${context.tr('tin')}',
                   style: const TextStyle(
                     color: Color(0xFF334155),
                     fontSize: 11.5,
@@ -1221,7 +1226,7 @@ class _PostingSingleRow extends StatelessWidget {
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  item.description,
+                  context.tr(item.description),
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
@@ -1313,7 +1318,7 @@ class _PostingComboRow extends StatelessWidget {
           const SizedBox(width: 7),
           Expanded(
             child: Text(
-              '${item.name} = ${_formatMoneyK(item.price)}',
+              '${context.tr(item.name)} = ${_formatMoneyK(item.price)}',
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
               style: const TextStyle(
@@ -1392,7 +1397,7 @@ class _AddonCard extends StatelessWidget {
           ),
           const SizedBox(height: 5),
           Text(
-            feature.name,
+            context.tr(feature.name),
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
             textAlign: TextAlign.center,
@@ -1568,7 +1573,10 @@ class _OrderSheet extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final name = order?.name ?? context.tr('Chưa chọn gói');
-    final total = order == null ? '0 VND' : '${_formatMoney(order!.price)} VND';
+    final total = context.tr(
+      '{amount} đ',
+      {'amount': order == null ? '0' : _formatMoney(order!.price)},
+    );
 
     return SafeArea(
       top: false,
@@ -1744,7 +1752,7 @@ class _OrderSheet extends StatelessWidget {
                         icon: Icons.account_balance_wallet,
                         title: context.tr('Ví NhaWOW'),
                         subtitle:
-                            '${context.tr('Trừ trực tiếp từ số dư ví')} · ${_formatMoney(store.walletBalance)} đ',
+                            '${context.tr('Trừ trực tiếp từ số dư ví')} · ${context.tr('{amount} đ', {'amount': _formatMoney(store.walletBalance)})}',
                         onTap: () => onPaymentMethodChanged('wallet'),
                       ),
                       const SizedBox(height: 7),
@@ -1989,11 +1997,11 @@ String _formatMoneyK(double value) {
   return '${number.toStringAsFixed(1).replaceAll('.', ',')}k';
 }
 
-String _unitPrice(double price, int quota) {
+String _unitPrice(BuildContext context, double price, int quota) {
   if (price <= 0 || quota <= 0) return '-';
   final number = (price / quota) / 1000;
   final text = number == number.roundToDouble()
       ? number.round().toString()
       : number.toStringAsFixed(1).replaceAll('.', ',');
-  return '${text}k/tin';
+  return '${text}k/${context.tr('tin')}';
 }
