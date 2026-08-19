@@ -117,7 +117,14 @@ class _LanguageOption extends StatelessWidget {
           ),
           child: Row(
             children: [
-              Text(language.flag, style: const TextStyle(fontSize: 30)),
+              Text(
+                language.displayMark,
+                style: const TextStyle(
+                  color: AppTheme.navy,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
               const SizedBox(width: 14),
               Expanded(
                 child: Column(

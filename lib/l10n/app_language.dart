@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 enum AppLanguage {
@@ -36,6 +37,21 @@ enum AppLanguage {
   final String nativeName;
   final String englishName;
   final String flag;
+
+  /// Country flag emoji is kept on Android/iOS. Flutter Web can emit a
+  /// missing-Noto-font warning for regional-indicator emoji, so use a short
+  /// text mark in web builds instead.
+  String get displayMark {
+    if (!kIsWeb) return flag;
+    switch (this) {
+      case AppLanguage.vietnamese:
+        return 'VI';
+      case AppLanguage.english:
+        return 'EN';
+      case AppLanguage.chinese:
+        return 'ZH';
+    }
+  }
 
   static AppLanguage? tryParse(String? value) {
     final normalized = (value ?? '').trim().toLowerCase();

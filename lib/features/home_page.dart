@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import '../app/app_store.dart';
 import '../core/app_assets.dart';
 import '../core/auth_gate.dart';
+import '../core/floating_contact.dart';
 import '../core/widgets.dart';
 import '../models/models.dart';
 import '../l10n/app_localizations.dart';
@@ -443,6 +444,11 @@ class _HomePageState extends State<HomePage> {
                   ),
                 ),
               ),
+            Positioned.fill(
+              child: FloatingContact(
+                bottomOffset: _bottomSwitcherVisible ? 190 : 112,
+              ),
+            ),
           ],
         ),
       ),
@@ -680,25 +686,6 @@ class _DesignedHomeHeader extends StatelessWidget {
                           color: Colors.white,
                         ),
                       ),
-
-                      // Lớp màng trắng nhẹ ở nửa trái banner. Không dùng lớp
-                      // navy tối để phần nội dung bên trái không bị chuyển xám.
-                      const DecoratedBox(
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            begin: Alignment.centerLeft,
-                            end: Alignment.centerRight,
-                            stops: [0.0, 0.46, 0.72, 1.0],
-                            colors: [
-                              Color(0xEFFFFFFF),
-                              Color(0xBFFFFFFF),
-                              Color(0x42FFFFFF),
-                              Color(0x00FFFFFF),
-                            ],
-                          ),
-                        ),
-                      ),
-
                       _HeroForeground(
                         store: store,
                         compact: compact,
@@ -859,10 +846,17 @@ class _HeroForeground extends StatelessWidget {
                 Text(
                   greeting,
                   style: TextStyle(
-                    color: _HomePalette.navy,
+                    color: Colors.white.withValues(alpha: 0.98),
                     fontSize: verySmall ? 12.5 : (compact ? 14 : 18),
                     fontWeight: FontWeight.w600,
                     height: 1.05,
+                    shadows: const [
+                      Shadow(
+                        color: Color(0x52000000),
+                        blurRadius: 8,
+                        offset: Offset(0, 1),
+                      ),
+                    ],
                   ),
                 ),
                 const SizedBox(height: 2),
@@ -876,11 +870,18 @@ class _HeroForeground extends StatelessWidget {
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
-                          color: _HomePalette.navy,
+                          color: Colors.white,
                           fontSize: verySmall ? 26 : (compact ? 32 : 43),
                           fontWeight: FontWeight.w700,
                           letterSpacing: -0.8,
                           height: 1,
+                          shadows: const [
+                            Shadow(
+                              color: Color(0x5C000000),
+                              blurRadius: 10,
+                              offset: Offset(0, 2),
+                            ),
+                          ],
                         ),
                       ),
                     ),
@@ -901,10 +902,17 @@ class _HeroForeground extends StatelessWidget {
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
-                    color: _HomePalette.secondaryText,
+                    color: Colors.white.withValues(alpha: 0.94),
                     fontSize: verySmall ? 11 : (compact ? 12.5 : 15),
                     height: 1.32,
                     fontWeight: FontWeight.w500,
+                    shadows: const [
+                      Shadow(
+                        color: Color(0x4A000000),
+                        blurRadius: 7,
+                        offset: Offset(0, 1),
+                      ),
+                    ],
                   ),
                 ),
               ],

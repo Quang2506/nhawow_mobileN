@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../l10n/app_localizations.dart';
@@ -101,20 +102,26 @@ class _AgentLevelBadgeState extends State<AgentLevelBadge>
                           if (widget.agent.isBroker) ...[
                             Transform.scale(
                               scale: iconScale,
-                              child: Text(
-                                widget.agent.levelIcon,
-                                style: TextStyle(
-                                  fontSize: compact ? 12.5 : 14,
-                                  height: 1,
-                                  shadows: const [
-                                    Shadow(
-                                      color: Color(0x260F172A),
-                                      blurRadius: 5,
-                                      offset: Offset(0, 2),
+                              child: kIsWeb
+                                  ? Icon(
+                                      _webLevelIcon(widget.agent.normalizedLevel),
+                                      size: compact ? 14 : 16,
+                                      color: palette.foreground,
+                                    )
+                                  : Text(
+                                      widget.agent.levelIcon,
+                                      style: TextStyle(
+                                        fontSize: compact ? 12.5 : 14,
+                                        height: 1,
+                                        shadows: const [
+                                          Shadow(
+                                            color: Color(0x260F172A),
+                                            blurRadius: 5,
+                                            offset: Offset(0, 2),
+                                          ),
+                                        ],
+                                      ),
                                     ),
-                                  ],
-                                ),
-                              ),
                             ),
                             SizedBox(width: compact ? 5 : 7),
                           ],
@@ -170,6 +177,24 @@ class _AgentLevelBadgeState extends State<AgentLevelBadge>
         );
       },
     );
+  }
+}
+
+IconData _webLevelIcon(int level) {
+  switch (level) {
+    case 1:
+      return Icons.home_rounded;
+    case 2:
+      return Icons.star_rounded;
+    case 3:
+      return Icons.shield_rounded;
+    case 4:
+      return Icons.emoji_events_rounded;
+    case 5:
+      return Icons.diamond_rounded;
+    case 6:
+    default:
+      return Icons.workspace_premium_rounded;
   }
 }
 

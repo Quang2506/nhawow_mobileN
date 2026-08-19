@@ -7,6 +7,7 @@ import 'app_image.dart';
 import '../models/models.dart';
 import '../l10n/app_localizations.dart';
 import 'app_theme.dart';
+import 'property_price_formatter.dart';
 
 class PageContainer extends StatelessWidget {
   const PageContainer({
@@ -189,7 +190,7 @@ class PropertyCard extends StatelessWidget {
   final VoidCallback? onTap;
   final double imageHeight;
 
-  static const Color _priceColor = Color(0xFF078A73);
+  static const Color _priceColor = Color(0xFFEF4444);
 
   @override
   Widget build(BuildContext context) {
@@ -402,7 +403,7 @@ class PropertyCard extends StatelessWidget {
                                   TextSpan(
                                     children: [
                                       TextSpan(
-                                        text: context.tr(current.priceLabel),
+                                        text: displayPropertyPrice(context, current),
                                         style: const TextStyle(
                                           color: _priceColor,
                                           fontSize: 18,
@@ -530,24 +531,19 @@ class PropertyCard extends StatelessWidget {
       return '';
     }
 
+    final languageCode = Localizations.localeOf(context).languageCode;
+    if (languageCode.toLowerCase().startsWith('zh')) {
+      final vndPerSquareMeter = totalPrice / property.area;
+      return '${formatChineseVndCompact(vndPerSquareMeter)}/平方米';
+    }
+
     final raw = millionPerSquareMeter.toStringAsFixed(2);
-    final formatted = Localizations.localeOf(context).languageCode == 'vi'
-        ? raw.replaceAll('.', ',')
-        : raw;
+    final formatted = languageCode == 'vi' ? raw.replaceAll('.', ',') : raw;
 
-    final isMonthly = property.priceLabel
-        .toLowerCase()
-        .contains('tháng');
-
-    return isMonthly
-        ? context.tr(
-            '{value} triệu/m²/tháng',
-            {'value': formatted},
-          )
-        : context.tr(
-            '{value} triệu/m²',
-            {'value': formatted},
-          );
+    return context.tr(
+      '{value} triệu/m²',
+      {'value': formatted},
+    );
   }
 
   static double _resolveTotalPrice(PropertyModel property) {
@@ -597,6 +593,10 @@ class PropertyCard extends StatelessWidget {
         normalized.contains('thousand') ||
         normalized.contains('千越南盾')) {
       multiplier = 1000;
+    } else if (normalized.contains('亿')) {
+      multiplier = 100000000;
+    } else if (normalized.contains('万')) {
+      multiplier = 10000;
     }
 
     var numberText = normalized.replaceAll(RegExp(r'[^0-9,.\-]'), '');

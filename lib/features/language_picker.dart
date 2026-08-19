@@ -75,8 +75,10 @@ class _LanguagePickerSheet extends StatelessWidget {
           for (final language in AppLanguage.values)
             Padding(
               padding: const EdgeInsets.only(bottom: 10),
-              child: ListTile(
-                onTap: () => Navigator.of(context).pop(language),
+              child: Material(
+                color: language == currentLanguage
+                    ? const Color(0xFFEAF7FF)
+                    : Colors.white,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(16),
                   side: BorderSide(
@@ -85,21 +87,35 @@ class _LanguagePickerSheet extends StatelessWidget {
                         : const Color(0xFFDDE7F0),
                   ),
                 ),
-                tileColor: language == currentLanguage
-                    ? const Color(0xFFEAF7FF)
-                    : Colors.white,
-                leading: Text(language.flag, style: const TextStyle(fontSize: 28)),
-                title: Text(
-                  language.nativeName,
-                  style: const TextStyle(
-                    color: AppTheme.navy,
-                    fontWeight: FontWeight.w900,
+                clipBehavior: Clip.antiAlias,
+                child: ListTile(
+                  onTap: () => Navigator.of(context).pop(language),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
                   ),
+                  leading: Text(
+                    language.displayMark,
+                    style: const TextStyle(
+                      color: AppTheme.navy,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                  title: Text(
+                    language.nativeName,
+                    style: const TextStyle(
+                      color: AppTheme.navy,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                  subtitle: Text(localizations.languageName(language)),
+                  trailing: language == currentLanguage
+                      ? const Icon(
+                          Icons.check_circle,
+                          color: AppTheme.primaryDark,
+                        )
+                      : const Icon(Icons.chevron_right),
                 ),
-                subtitle: Text(localizations.languageName(language)),
-                trailing: language == currentLanguage
-                    ? const Icon(Icons.check_circle, color: AppTheme.primaryDark)
-                    : const Icon(Icons.chevron_right),
               ),
             ),
         ],

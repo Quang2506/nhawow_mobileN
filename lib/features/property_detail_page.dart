@@ -13,6 +13,7 @@ import '../core/auth_gate.dart';
 import '../core/widgets.dart';
 import '../core/google_map_embed.dart';
 import '../core/media_url_resolver.dart';
+import '../core/property_price_formatter.dart';
 import '../config/app_config.dart';
 import '../models/models.dart';
 import '../l10n/app_localizations.dart';
@@ -179,9 +180,9 @@ class _PropertyDetailPageState extends State<PropertyDetailPage> {
               maxWidth: 1050,
               padding: EdgeInsets.fromLTRB(
                 isWide ? 18 : 20,
-                isWide ? 22 : 20,
+                isWide ? 20 : 14,
                 isWide ? 18 : 20,
-                isWide ? 32 : 28,
+                isWide ? 28 : 20,
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -200,7 +201,7 @@ class _PropertyDetailPageState extends State<PropertyDetailPage> {
                       letterSpacing: -0.28,
                     ),
                   ),
-                  const SizedBox(height: 10),
+                  const SizedBox(height: 7),
                   Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -228,21 +229,21 @@ class _PropertyDetailPageState extends State<PropertyDetailPage> {
                       ),
                     ],
                   ),
-                  const SizedBox(height: 22),
+                  const SizedBox(height: 14),
                   _SectionDivider(),
-                  const SizedBox(height: 22),
+                  const SizedBox(height: 14),
                   _DetailPriceSummary(property: property),
                   if (property.infoTags.isNotEmpty) ...[
-                    const SizedBox(height: 18),
+                    const SizedBox(height: 12),
                     _ExpandableInfoTags(tags: property.infoTags),
                   ],
-                  const SizedBox(height: 24),
+                  const SizedBox(height: 16),
                   const _SectionDivider(),
-                  const SizedBox(height: 24),
+                  const SizedBox(height: 16),
                   _BasicInformationSection(property: property),
-                  const SizedBox(height: 26),
+                  const SizedBox(height: 18),
                   const _SectionDivider(),
-                  const SizedBox(height: 24),
+                  const SizedBox(height: 16),
                   _SectionCard(
                     title: context.tr('Tiện ích / Nội thất'),
                     icon: Icons.chair_alt_outlined,
@@ -262,9 +263,9 @@ class _PropertyDetailPageState extends State<PropertyDetailPage> {
                                 .toList(growable: false),
                           ),
                   ),
-                  const SizedBox(height: 26),
+                  const SizedBox(height: 18),
                   const _SectionDivider(),
-                  const SizedBox(height: 24),
+                  const SizedBox(height: 16),
                   _SectionCard(
                     title: context.tr('Mô tả'),
                     icon: Icons.subject_rounded,
@@ -272,20 +273,16 @@ class _PropertyDetailPageState extends State<PropertyDetailPage> {
                       description: property.description,
                     ),
                   ),
-                  const SizedBox(height: 26),
+                  const SizedBox(height: 18),
                   const _SectionDivider(),
-                  const SizedBox(height: 24),
+                  const SizedBox(height: 16),
                   _MapCard(property: property),
-                  const SizedBox(height: 26),
-                  const _SectionDivider(),
-                  const SizedBox(height: 24),
-                  _OwnerCard(property: property, showActions: isWide),
                   if (similar.isNotEmpty) ...[
-                    const SizedBox(height: 28),
+                    const SizedBox(height: 18),
                     const _SectionDivider(),
-                    const SizedBox(height: 24),
+                    const SizedBox(height: 16),
                     SectionHeader(title: context.tr('Bất động sản tương tự')),
-                    const SizedBox(height: 10),
+                    const SizedBox(height: 8),
                     PropertyGrid(
                       properties: similar,
                       onPropertyTap: (item) {
@@ -312,7 +309,6 @@ class _PropertyDetailPageState extends State<PropertyDetailPage> {
 const Color _detailSecondaryTextColor = Color(0xFF667085);
 const Color _detailDividerColor = Color(0xFFEEF2F6);
 const Color _detailMutedBackground = Color(0xFFF7F9FC);
-const Color _detailCardBackground = Color(0xFFF8FAFC);
 
 String _normalizedDetailTitle(String title) {
   final normalized = title.trim().replaceAll(RegExp(r'\s+'), ' ');
@@ -495,7 +491,7 @@ class _DetailPriceSummary extends StatelessWidget {
 
   final PropertyModel property;
 
-  static const Color _priceColor = Color(0xFF078A73);
+  static const Color _priceColor = Color(0xFFEF4444);
 
   @override
   Widget build(BuildContext context) {
@@ -509,7 +505,7 @@ class _DetailPriceSummary extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                context.tr(property.priceLabel),
+                displayPropertyPrice(context, property),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: const TextStyle(
@@ -1471,7 +1467,7 @@ class _InformationGrid extends StatelessWidget {
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        const spacing = 12.0;
+        const spacing = 10.0;
         final columns = constraints.maxWidth >= 760 ? 3 : 2;
         final itemWidth =
             (constraints.maxWidth - spacing * (columns - 1)) / columns;
@@ -1513,12 +1509,12 @@ class _InformationItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      constraints: const BoxConstraints(minHeight: 74),
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      constraints: const BoxConstraints(minHeight: 70),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
-        color: _detailCardBackground,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFFEAF0F6)),
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFDDE5EE)),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1612,7 +1608,7 @@ class _SectionCard extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: 10),
           child,
         ],
       ),
@@ -2540,136 +2536,6 @@ String _mapPlaceTitle(PropertyModel property) {
   return firstPart.isEmpty ? address : firstPart;
 }
 
-class _OwnerCard extends StatelessWidget {
-  const _OwnerCard({required this.property, this.showActions = true});
-
-  final PropertyModel property;
-  final bool showActions;
-
-  @override
-  Widget build(BuildContext context) {
-    final owner = property.owner;
-    return _SectionCard(
-      title: context.tr('Người đăng'),
-      icon: Icons.person_outline_rounded,
-      child: Container(
-        width: double.infinity,
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: _detailCardBackground,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: const Color(0xFFEAF0F6)),
-        ),
-        child: Column(
-          children: [
-            InkWell(
-              borderRadius: BorderRadius.circular(12),
-              onTap: () {
-                Navigator.of(context).push(
-                  MaterialPageRoute<void>(
-                    builder: (_) => AgentProfilePage(agent: owner),
-                  ),
-                );
-              },
-              child: Row(
-                children: [
-                  AppAvatar(
-                    url: owner.avatarUrl,
-                    fallbackText: owner.name,
-                    radius: 28,
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          owner.name,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            color: AppTheme.navy,
-                            fontSize: 16,
-                            height: 1.2,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                        const SizedBox(height: 6),
-                        AgentLevelBadge(agent: owner, compact: true),
-                        if (property.updatedAgoText.trim().isNotEmpty) ...[
-                          const SizedBox(height: 8),
-                          Row(
-                            children: [
-                              const Icon(
-                                Icons.schedule_rounded,
-                                size: 14,
-                                color: _detailSecondaryTextColor,
-                              ),
-                              const SizedBox(width: 5),
-                              Expanded(
-                                child: Text(
-                                  context.tr(property.updatedAgoText),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: const TextStyle(
-                                    color: _detailSecondaryTextColor,
-                                    fontSize: 12.5,
-                                    height: 1.2,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ],
-                    ),
-                  ),
-                  TextButton(
-                    onPressed: () {
-                      Navigator.of(context).push(
-                        MaterialPageRoute<void>(
-                          builder: (_) => AgentProfilePage(agent: owner),
-                        ),
-                      );
-                    },
-                    child: Text(context.tr('Xem hồ sơ')),
-                  ),
-                ],
-              ),
-            ),
-            if (showActions) ...[
-              const SizedBox(height: 14),
-              Row(
-                children: [
-                  Expanded(
-                    child: _BottomContactAction(
-                      backgroundColor: const Color(0xFF18A84B),
-                      foregroundColor: Colors.white,
-                      icon: Icons.phone_rounded,
-                      label: context.tr('Gọi điện'),
-                      onPressed: () => _callPropertyOwner(context, property),
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: _BottomContactAction(
-                      backgroundColor: const Color(0xFF1697F6),
-                      foregroundColor: Colors.white,
-                      icon: Icons.forum_rounded,
-                      label: context.tr('Nhắn tin'),
-                      onPressed: () => _openPropertyChat(context, property),
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ],
-        ),
-      ),
-    );
-  }
-}
-
 class _GalleryPageIndicator extends StatelessWidget {
   const _GalleryPageIndicator({
     required this.currentIndex,
@@ -3029,10 +2895,14 @@ String _detailPricePerSquareMeter(
     return '';
   }
 
+  final languageCode = Localizations.localeOf(context).languageCode;
+  if (languageCode.toLowerCase().startsWith('zh')) {
+    final vndPerSquareMeter = totalPrice / property.area;
+    return '${formatChineseVndCompact(vndPerSquareMeter)}/平方米';
+  }
+
   final raw = millionPerSquareMeter.toStringAsFixed(2);
-  final formatted = Localizations.localeOf(context).languageCode == 'vi'
-      ? raw.replaceAll('.', ',')
-      : raw;
+  final formatted = languageCode == 'vi' ? raw.replaceAll('.', ',') : raw;
   return context.tr('{value} triệu/m²', {'value': formatted});
 }
 
@@ -3067,6 +2937,10 @@ double _parseDetailPriceLabel(String label) {
       normalized.contains('thousand') ||
       normalized.contains('千越南盾')) {
     multiplier = 1000;
+  } else if (normalized.contains('亿')) {
+    multiplier = 100000000;
+  } else if (normalized.contains('万')) {
+    multiplier = 10000;
   }
 
   var numberText = normalized.replaceAll(RegExp(r'[^0-9,.\-]'), '');

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../app/app_store.dart';
 import '../core/app_theme.dart';
+import '../core/property_price_formatter.dart';
 import '../core/auth_gate.dart';
 import '../core/widgets.dart';
 import '../data/remote/api_transport.dart';
@@ -1166,7 +1167,7 @@ class _PartnerPropertyCard extends StatelessWidget {
                   ],
                   const SizedBox(height: 7),
                   Text(
-                    '${context.tr(property.priceLabel)} · ${property.area} m²',
+                    '${displayPropertyPrice(context, property)} · ${property.area} m²',
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(fontSize: 12),

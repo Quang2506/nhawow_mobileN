@@ -354,7 +354,7 @@ class _LoggedOutAccount extends StatelessWidget {
         _AccountMenuItem(
           icon: Icons.language,
           title: context.tr('Ngôn ngữ'),
-          subtitle: '${store.language.flag} ${store.language.nativeName}',
+          subtitle: '${store.language.displayMark} ${store.language.nativeName}',
           onTap: () => showLanguagePicker(context),
         ),
       ],
@@ -478,7 +478,7 @@ class _LoggedInAccount extends StatelessWidget {
         _AccountMenuItem(
           icon: Icons.language,
           title: context.tr('Ngôn ngữ'),
-          subtitle: '${store.language.flag} ${store.language.nativeName}',
+          subtitle: '${store.language.displayMark} ${store.language.nativeName}',
           onTap: () => showLanguagePicker(context),
         ),
         _AccountMenuItem(
