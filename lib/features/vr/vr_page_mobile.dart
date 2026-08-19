@@ -30,6 +30,7 @@ class _VrPageState extends State<VrPage> {
   static const Color _background = Color(0xFF030507);
   static const Duration _imageTimeout = Duration(seconds: 35);
   static const Duration _preloadDelay = Duration(milliseconds: 1400);
+  static const Duration _preloadJoinTimeout = Duration(milliseconds: 900);
 
   final NhaWowApiService _api = NhaWowApiService();
   PanoramaController? _panoramaController;
@@ -43,6 +44,8 @@ class _VrPageState extends State<VrPage> {
 
   Timer? _preloadTimer;
   int _loadGeneration = 0;
+  int _preloadGeneration = 0;
+  Future<void>? _preloadFuture;
 
   bool _loadingTour = true;
   bool _switchingScene = false;
@@ -53,6 +56,8 @@ class _VrPageState extends State<VrPage> {
   String? _pendingSceneKey;
   String? _preloadedSceneKey;
   String? _preloadedPanoramaUrl;
+  String? _preloadingSceneKey;
+  String? _preloadingPanoramaUrl;
   String? _previousPanoramaUrlToEvict;
 
   double _entryPitch = 0;
@@ -79,6 +84,7 @@ class _VrPageState extends State<VrPage> {
   Future<void> _loadTour() async {
     final generation = ++_loadGeneration;
     _preloadTimer?.cancel();
+    _invalidatePreload();
 
     if (mounted) {
       setState(() {
@@ -257,11 +263,16 @@ class _VrPageState extends State<VrPage> {
       _previousPanoramaUrlToEvict = previousUrl;
     }
     final stalePreloadUrl = _preloadedPanoramaUrl;
-    if (stalePreloadUrl != null &&
+    if (kIsWeb &&
+        stalePreloadUrl != null &&
         stalePreloadUrl.isNotEmpty &&
         stalePreloadUrl != nextUrl) {
       unawaited(_evictMemoryImage(stalePreloadUrl));
     }
+    _preloadGeneration++;
+    _preloadingSceneKey = null;
+    _preloadingPanoramaUrl = null;
+    _preloadFuture = null;
     _activeScene = scene;
     _entryPitch = _clampPitch(pitch);
     _entryYaw = _normalizeYaw(yaw);
@@ -309,7 +320,7 @@ class _VrPageState extends State<VrPage> {
       maxLatitude: 85,
       minZoom: 0.72,
       maxZoom: 2.75,
-      sensitivity: 0.82,
+      sensitivity: 1.20,
       latSegments: kIsWeb ? 20 : 24,
       lonSegments: kIsWeb ? 40 : 48,
       sensorControl: !kIsWeb && _sensorEnabled
@@ -397,7 +408,31 @@ class _VrPageState extends State<VrPage> {
 
     _memoryTouchedUrls.add(url);
     final provider = _panoramaImageProvider(url);
-    await _resolveImage(provider).timeout(_imageTimeout);
+    await _resolveImage(provider, timeout: _imageTimeout);
+  }
+
+  Future<void> _prefetchSceneFile(VrSceneModel scene) async {
+    final url = scene.panoramaUrl.trim();
+    if (url.isEmpty) return;
+
+    // Mobile chỉ tải file vào disk cache, không resolve ImageProvider ở đây.
+    // Nhờ vậy preload nền không decode panorama thành texture lớn trong RAM.
+    // Khi người dùng thực sự chuyển phòng, _warmScene mới decode ảnh.
+    if (!kIsWeb) {
+      await CachedNetworkImageProvider.defaultCacheManager
+          .getSingleFile(url)
+          .timeout(_imageTimeout);
+      return;
+    }
+
+    // Flutter Web không có disk cache-manager tương đương. Giữ preload ảnh
+    // hiện tại nhưng có generation guard để scene preload cũ không được dùng
+    // sau khi người dùng đã chuyển hướng sang scene khác.
+    _memoryTouchedUrls.add(url);
+    await _resolveImage(
+      _panoramaImageProvider(url),
+      timeout: _imageTimeout,
+    );
   }
 
   ImageProvider<Object> _panoramaImageProvider(String url) {
@@ -412,31 +447,90 @@ class _VrPageState extends State<VrPage> {
     await _panoramaImageProvider(url).evict();
   }
 
-  Future<void> _dropUnusedPreload(String targetUrl) async {
-    final preloadedUrl = _preloadedPanoramaUrl?.trim() ?? '';
-    if (preloadedUrl.isEmpty || preloadedUrl == targetUrl.trim()) return;
-
+  void _invalidatePreload() {
+    _preloadGeneration++;
+    _preloadTimer?.cancel();
+    _preloadTimer = null;
+    _preloadingSceneKey = null;
+    _preloadingPanoramaUrl = null;
+    _preloadFuture = null;
     _preloadedSceneKey = null;
     _preloadedPanoramaUrl = null;
-    await _evictMemoryImage(preloadedUrl);
   }
 
-  Future<void> _resolveImage(ImageProvider<Object> provider) {
+  Future<void> _dropUnusedPreload(String targetUrl) async {
+    final normalizedTarget = targetUrl.trim();
+    final preloadingUrl = _preloadingPanoramaUrl?.trim() ?? '';
+    final pendingFuture = _preloadFuture;
+
+    // Nếu đúng scene đang được prefetch xuống disk, chờ download hiện tại hoàn
+    // tất rồi mới decode. Điều này tránh tạo request mạng thứ hai cho cùng URL.
+    if (preloadingUrl.isNotEmpty &&
+        preloadingUrl == normalizedTarget &&
+        pendingFuture != null) {
+      try {
+        // Chỉ chờ rất ngắn nếu preload gần hoàn tất; không để thao tác chuyển
+        // phòng của người dùng bị treo theo timeout 35 giây của preload nền.
+        await pendingFuture.timeout(_preloadJoinTimeout);
+      } catch (_) {
+        // _warmScene phía sau sẽ tự đọc cache hoặc tải lại nếu cần.
+      }
+      return;
+    }
+
+    // Scene khác đã được preload xong chỉ cần bỏ bản decode khỏi RAM trên Web.
+    // Trên mobile preload chỉ nằm ở disk cache nên không cần xóa file cache.
+    final preloadedUrl = _preloadedPanoramaUrl?.trim() ?? '';
+    _preloadGeneration++;
+    _preloadingSceneKey = null;
+    _preloadingPanoramaUrl = null;
+    _preloadFuture = null;
+    _preloadedSceneKey = null;
+    _preloadedPanoramaUrl = null;
+
+    if (kIsWeb &&
+        preloadedUrl.isNotEmpty &&
+        preloadedUrl != normalizedTarget) {
+      await _evictMemoryImage(preloadedUrl);
+    }
+  }
+
+  Future<void> _resolveImage(
+    ImageProvider<Object> provider, {
+    required Duration timeout,
+  }) {
     final completer = Completer<void>();
     final stream = provider.resolve(createLocalImageConfiguration(context));
+    Timer? timeoutTimer;
     late final ImageStreamListener listener;
+
+    void removeListener() {
+      timeoutTimer?.cancel();
+      stream.removeListener(listener);
+    }
+
     listener = ImageStreamListener(
       (image, synchronousCall) {
-        stream.removeListener(listener);
+        removeListener();
         if (!completer.isCompleted) completer.complete();
       },
       onError: (Object error, StackTrace? stackTrace) {
-        stream.removeListener(listener);
+        removeListener();
         if (!completer.isCompleted) {
           completer.completeError(error, stackTrace);
         }
       },
     );
+
+    final timeoutMessage = context.tr('Tải ảnh panorama quá thời gian cho phép.');
+    timeoutTimer = Timer(timeout, () {
+      stream.removeListener(listener);
+      if (!completer.isCompleted) {
+        completer.completeError(
+          TimeoutException(timeoutMessage, timeout),
+        );
+      }
+    });
     stream.addListener(listener);
     return completer.future;
   }
@@ -492,6 +586,7 @@ class _VrPageState extends State<VrPage> {
   }
 
   Future<void> _preloadOneNeighbor(VrSceneModel current) async {
+    int? preloadGeneration;
     try {
       final connections = await _connectivity.checkConnectivity();
       final allow = kIsWeb ||
@@ -502,36 +597,80 @@ class _VrPageState extends State<VrPage> {
       final candidate = _neighborCandidate(current);
       if (candidate == null ||
           candidate.sceneKey == _preloadedSceneKey ||
+          candidate.sceneKey == _preloadingSceneKey ||
           _sameScene(candidate, current)) {
         return;
       }
 
-      await _warmScene(candidate);
+      preloadGeneration = ++_preloadGeneration;
+      final candidateUrl = candidate.panoramaUrl.trim();
+      _preloadingSceneKey = candidate.sceneKey;
+      _preloadingPanoramaUrl = candidateUrl;
+
+      final preloadFuture = _prefetchSceneFile(candidate);
+      _preloadFuture = preloadFuture;
+      await preloadFuture;
+
       final activeAfterPreload = _activeScene;
-      if (!mounted ||
-          activeAfterPreload == null ||
-          !_sameScene(activeAfterPreload, current)) {
-        await _evictMemoryImage(candidate.panoramaUrl);
+      final isStillCurrent = mounted &&
+          preloadGeneration == _preloadGeneration &&
+          activeAfterPreload != null &&
+          _sameScene(activeAfterPreload, current);
+
+      if (!isStillCurrent) {
+        // Chỉ Web preload bằng ImageProvider nên mới có bản decode cần bỏ RAM.
+        if (kIsWeb && candidateUrl.isNotEmpty) {
+          await _evictMemoryImage(candidateUrl);
+        }
         return;
       }
+
+      _preloadingSceneKey = null;
+      _preloadingPanoramaUrl = null;
+      _preloadFuture = null;
       _preloadedSceneKey = candidate.sceneKey;
-      _preloadedPanoramaUrl = candidate.panoramaUrl;
+      _preloadedPanoramaUrl = candidateUrl;
     } catch (_) {
-      // Preload chạy nền; lỗi mạng không được ảnh hưởng scene đang xem.
+      // Preload chạy nền; lỗi mạng không được ảnh hưởng scene đang xem. Chỉ
+      // xóa state nếu đây vẫn là preload hiện hành để không ghi đè preload mới.
+      if (preloadGeneration != null &&
+          preloadGeneration == _preloadGeneration) {
+        _preloadingSceneKey = null;
+        _preloadingPanoramaUrl = null;
+        _preloadFuture = null;
+      }
     }
   }
 
   VrSceneModel? _neighborCandidate(VrSceneModel current) {
+    VrSceneModel? bestScene;
+    double? bestDistance;
+
+    // Ưu tiên hotspot nằm gần hướng camera hiện tại nhất. Người dùng thường
+    // chọn phòng đang nằm trước mặt, nên xác suất preload đúng scene cao hơn
+    // nhiều so với việc luôn chọn hotspot navigation đầu tiên trong danh sách.
     for (final hotspot in current.hotspots) {
       if (!hotspot.isNavigation) continue;
       final linked = _sceneByKey(hotspot.targetSceneKey);
-      if (linked != null && !_sameScene(linked, current)) return linked;
+      if (linked == null || _sameScene(linked, current)) continue;
+
+      final distance = _yawDistance(_currentYaw, hotspot.yaw);
+      if (bestDistance == null || distance < bestDistance) {
+        bestDistance = distance;
+        bestScene = linked;
+      }
     }
+
+    if (bestScene != null) return bestScene;
 
     final scenes = _nativeScenes;
     final index = scenes.indexWhere((scene) => _sameScene(scene, current));
     if (index < 0 || scenes.length < 2) return null;
     return scenes[(index + 1) % scenes.length];
+  }
+
+  double _yawDistance(double a, double b) {
+    return _normalizeYaw(a - b).abs();
   }
 
   List<Hotspot> _buildHotspots(VrSceneModel scene) {
@@ -718,7 +857,9 @@ class _VrPageState extends State<VrPage> {
   @override
   void dispose() {
     _loadGeneration++;
+    _preloadGeneration++;
     _preloadTimer?.cancel();
+    _preloadFuture = null;
     // Không gọi setAnimSpeed trong dispose: panorama_viewer không gỡ listener
     // controller khi State con bị hủy. Dispose thẳng controller để xóa listener.
     _panoramaController?.dispose();
@@ -1191,8 +1332,10 @@ class _VrHotspotButton extends StatefulWidget {
 class _VrHotspotButtonState extends State<_VrHotspotButton>
     with SingleTickerProviderStateMixin {
   static const Duration _effectDuration = Duration(milliseconds: 2100);
+  static const Duration _ambientEffectDuration = Duration(milliseconds: 4200);
 
   late final AnimationController _effectController;
+  Timer? _effectStopTimer;
   bool _hovered = false;
   bool _focused = false;
   bool _activating = false;
@@ -1201,29 +1344,75 @@ class _VrHotspotButtonState extends State<_VrHotspotButton>
   void initState() {
     super.initState();
 
-    // Chỉ animation riêng hotspot được chạy, không setState liên tục cho
-    // PanoramaViewer. RepaintBoundary ở dưới giúp hiệu ứng không làm dựng lại
-    // toàn bộ ảnh panorama.
+    // Chỉ pulse hai nhịp khi hotspot vừa xuất hiện. Bản cũ repeat vô hạn nên
+    // mỗi hotspot navigation duy trì một ticker liên tục dù người dùng đứng yên
+    // hoặc hotspot đang nằm phía sau camera.
     _effectController = AnimationController(
       vsync: this,
       duration: _effectDuration,
-    )..repeat();
+    );
+    if (widget.isNavigation) {
+      _startEffect(stopAfter: _ambientEffectDuration);
+    }
+  }
+
+  void _startEffect({Duration? stopAfter}) {
+    _effectStopTimer?.cancel();
+    if (!_effectController.isAnimating) {
+      _effectController.repeat();
+    }
+
+    if (stopAfter != null) {
+      _effectStopTimer = Timer(stopAfter, _stopEffectIfIdle);
+    }
+  }
+
+  void _stopEffectIfIdle() {
+    if (!mounted || _hovered || _focused || _activating) return;
+    _effectController.stop();
+    // Dừng ở trạng thái trung tính thay vì frame co nhỏ nhất của nhịp thở.
+    _effectController.value = 0.25;
+  }
+
+  void _setHover(bool value) {
+    if (!mounted || _hovered == value) return;
+    setState(() => _hovered = value);
+    if (value) {
+      _startEffect();
+    } else if (!_focused && !_activating) {
+      _startEffect(stopAfter: _effectDuration);
+    }
+  }
+
+  void _setFocus(bool value) {
+    if (!mounted || _focused == value) return;
+    setState(() => _focused = value);
+    if (value) {
+      _startEffect();
+    } else if (!_hovered && !_activating) {
+      _startEffect(stopAfter: _effectDuration);
+    }
   }
 
   Future<void> _activate() async {
     if (_activating) return;
 
     setState(() => _activating = true);
+    if (widget.isNavigation) _startEffect();
     try {
       await widget.onTap();
     } finally {
       if (!mounted) return;
       setState(() => _activating = false);
+      if (widget.isNavigation && !_hovered && !_focused) {
+        _startEffect(stopAfter: _effectDuration);
+      }
     }
   }
 
   @override
   void dispose() {
+    _effectStopTimer?.cancel();
     _effectController.dispose();
     super.dispose();
   }
@@ -1270,12 +1459,8 @@ class _VrHotspotButtonState extends State<_VrHotspotButton>
         message: safeLabel,
         child: FocusableActionDetector(
           mouseCursor: SystemMouseCursors.click,
-          onShowHoverHighlight: (value) {
-            if (mounted) setState(() => _hovered = value);
-          },
-          onShowFocusHighlight: (value) {
-            if (mounted) setState(() => _focused = value);
-          },
+          onShowHoverHighlight: _setHover,
+          onShowFocusHighlight: _setFocus,
           child: GestureDetector(
             behavior: HitTestBehavior.opaque,
             onTap: _activate,
