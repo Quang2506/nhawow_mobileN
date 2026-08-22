@@ -43,10 +43,10 @@
 					<string>$(PRODUCT_MODULE_NAME).SceneDelegate</string>
 					<key>UISceneStoryboardFile</key>
 					<string>Main</string>
-</dict>
+				</dict>
 			</array>
-</dict>
-</dict>
+		</dict>
+	</dict>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
 	<key>UILaunchStoryboardName</key>
@@ -68,5 +68,10 @@
 	</array>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>NhaWOW cần quyền truy cập thư viện ảnh để tải ảnh bất động sản lên tin đăng.</string>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>fetch</string>
+		<string>remote-notification</string>
+	</array>
 </dict>
 </plist>

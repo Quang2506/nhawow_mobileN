@@ -9,6 +9,7 @@ import '../models/models.dart';
 import '../models/auth_models.dart';
 import '../models/partner_models.dart';
 import '../models/commerce_models.dart';
+import '../services/push_notification_service.dart';
 
 class AppStore extends ChangeNotifier {
   AppStore()
@@ -179,6 +180,7 @@ class AppStore extends ChangeNotifier {
     if (_hasLanguagePreference) {
       await refreshProperties();
       if (isLoggedIn) {
+        await _activatePushNotifications();
         await refreshConversations();
         await refreshCommerceData();
       }
@@ -1505,7 +1507,56 @@ class AppStore extends ChangeNotifier {
     }
   }
 
+  Future<void> _activatePushNotifications() async {
+    if (!isLoggedIn) return;
+    try {
+      await PushNotificationService.instance.activate(
+        onToken: _registerPushToken,
+        onForeground: _handleForegroundPush,
+      );
+    } catch (_) {
+      // Push là tính năng bổ sung; lỗi Firebase không được chặn đăng nhập/app.
+    }
+  }
+
+  Future<void> _registerPushToken(String token, String platform) async {
+    if (!isLoggedIn || token.trim().isEmpty) return;
+    try {
+      await _api.registerPushToken(
+        token: token,
+        platform: platform,
+        language: apiLanguageCode,
+      );
+    } catch (_) {
+      // Backend cũ chưa có /push/register thì các chức năng hiện tại vẫn chạy.
+    }
+  }
+
+  Future<void> _unregisterCurrentPushToken() async {
+    if (!isLoggedIn) return;
+    final token = await PushNotificationService.instance.currentToken();
+    if (token == null || token.isEmpty) return;
+    try {
+      await _api.unregisterPushToken(
+        token: token,
+        platform: PushNotificationService.instance.platformName,
+        language: apiLanguageCode,
+      );
+    } catch (_) {
+      // Logout vẫn tiếp tục nếu server tạm thời không xóa được device token.
+    }
+  }
+
+  Future<void> _handleForegroundPush(PushPayload payload) async {
+    if (!isLoggedIn) return;
+    await Future.wait<void>([
+      refreshNotifications(force: true),
+      refreshConversations(force: true),
+    ]);
+  }
+
   Future<void> logout() async {
+    await _unregisterCurrentPushToken();
     try {
       await _api.logout(language: apiLanguageCode);
     } catch (_) {
@@ -1537,12 +1588,14 @@ class AppStore extends ChangeNotifier {
       // Phiên vẫn hoạt động trong RAM khi thiết bị tạm thời không ghi được bộ nhớ.
     }
     notifyListeners();
+    await _activatePushNotifications();
   }
 
   Future<void> _clearAuthState({
     SharedPreferences? preferences,
     bool notify = true,
   }) async {
+    PushNotificationService.instance.suspendSessionCallbacks();
     _authToken = '';
     _authUser = null;
     _authError = null;

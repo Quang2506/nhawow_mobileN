@@ -7,6 +7,9 @@ import UIKit
     _ application: UIApplication,
     didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
   ) -> Bool {
+    // Runner đang dùng UIScene. Firebase Messaging cần nhận delegate trước khi
+    // Flutter hoàn tất đăng ký plugin để onMessage/onMessageOpenedApp ổn định.
+    FLTFirebaseMessagingPlugin.configureNotificationCenterDelegate()
     return super.application(application, didFinishLaunchingWithOptions: launchOptions)
   }
 

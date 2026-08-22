@@ -805,6 +805,34 @@ class NhaWowApiService {
     return double.tryParse(value?.toString() ?? '');
   }
 
+  Future<void> registerPushToken({
+    required String token,
+    required String platform,
+    required String language,
+  }) async {
+    await _postEnvelope(
+      AppConfig.buildApiUri('/push/register', {'lang': language}),
+      <String, dynamic>{
+        'token': token.trim(),
+        'platform': platform.trim().toLowerCase(),
+      },
+    );
+  }
+
+  Future<void> unregisterPushToken({
+    required String token,
+    required String platform,
+    required String language,
+  }) async {
+    await _postEnvelope(
+      AppConfig.buildApiUri('/push/unregister', {'lang': language}),
+      <String, dynamic>{
+        'token': token.trim(),
+        'platform': platform.trim().toLowerCase(),
+      },
+    );
+  }
+
   Future<List<NotificationModel>> fetchNotifications({
     required String language,
   }) async {
