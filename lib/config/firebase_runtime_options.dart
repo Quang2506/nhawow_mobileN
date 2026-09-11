@@ -33,7 +33,7 @@ class FirebaseRuntimeOptions {
   );
   static const String _iosBundleId = String.fromEnvironment(
     'FIREBASE_IOS_BUNDLE_ID',
-    defaultValue: 'vn.nhawow.nhawowMobile',
+    defaultValue: 'com.nhawow.app',
   );
 
   static FirebaseOptions? get currentPlatform {

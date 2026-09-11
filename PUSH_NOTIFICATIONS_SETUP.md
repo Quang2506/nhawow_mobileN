@@ -13,8 +13,8 @@ Mobile app đã được bổ sung Firebase Cloud Messaging (FCM) theo cơ chế
 
 Tạo 2 app trong cùng Firebase project:
 
-- Android package: `vn.nhawow.nhawow_mobile`
-- iOS bundle id: `vn.nhawow.nhawowMobile`
+- Android package: `com.nhawow.app`
+- iOS bundle id: `com.nhawow.app`
 
 Với iOS, upload APNs Authentication Key (.p8) lên Firebase Cloud Messaging và đảm bảo Apple Developer/App ID đã bật Push Notifications.
 
@@ -134,3 +134,22 @@ Ngay sau khi backend tạo record notification cho user, gửi FCM:
 - Nếu user từ chối, app không ép bật notification.
 - Android: nếu user Force stop app trong Settings thì push chỉ hoạt động lại sau khi mở app.
 - iOS: một số trạng thái người dùng chủ động đóng app có giới hạn riêng của hệ điều hành; cần test trên iPhone thật.
+
+---
+
+## Cập nhật 2026-08-28
+
+Mobile đã thêm `flutter_local_notifications` để:
+- xin quyền notification ngay sau khi chọn ngôn ngữ;
+- xin quyền cho cả người dùng cài đè từ bản cũ;
+- hiển thị notification khi FCM đến trong lúc app đang foreground.
+
+Android build đã bật core library desugaring. Có thể dùng `build_android_release.ps1` ở thư mục gốc để build đúng icon + Firebase defines.
+
+## Production update 2026-09-11
+- iOS deployment target đã nâng lên 15.0.
+- Firebase project: `nhawow-e299a`.
+- Android application id: `com.nhawow.app`.
+- iOS bundle id: `com.nhawow.app`.
+- APNs `.p8` phải upload tại Firebase Console > Project settings > Cloud Messaging > Apple app configuration.
+- Dùng iPhone thật để xác nhận FCM/APNs token và push nhận thực tế.

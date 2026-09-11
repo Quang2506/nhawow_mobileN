@@ -178,6 +178,9 @@ class AppStore extends ChangeNotifier {
     }
 
     if (_hasLanguagePreference) {
+      // Bản cập nhật cài đè vẫn cần hỏi quyền notification nếu người dùng
+      // chưa từng cấp quyền ở các phiên bản trước.
+      await PushNotificationService.instance.requestNotificationPermission();
       await refreshProperties();
       if (isLoggedIn) {
         await _activatePushNotifications();
@@ -200,6 +203,10 @@ class AppStore extends ChangeNotifier {
       // Lựa chọn vẫn có hiệu lực trong phiên hiện tại; lần mở sau ứng dụng sẽ
       // hỏi lại nếu thiết bị không thể ghi SharedPreferences.
     }
+
+    // Xin quyền ngay sau thao tác chọn ngôn ngữ. Trước đây quyền chỉ được hỏi
+    // sau khi đăng nhập nên người dùng mới thường không thấy popup hệ thống.
+    await PushNotificationService.instance.requestNotificationPermission();
 
     if (shouldReload) {
       if (isLoggedIn) {

@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "400757741650",
+    "project_id": "nhawow-e299a",
+    "storage_bucket": "nhawow-e299a.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:400757741650:android:95de28a6013ed3dcd6a78b",
+        "android_client_info": {
+          "package_name": "com.nhawow.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDrWK3acqlVjF_wgj9jYXc-RoAgw8DBues"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

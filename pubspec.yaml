@@ -22,10 +22,12 @@ dependencies:
   image_picker: ^1.2.1
   firebase_core: ^4.13.0
   firebase_messaging: ^16.5.0
+  flutter_local_notifications: ^22.3.0
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
+  flutter_launcher_icons: ^0.14.4
 
 flutter:
   uses-material-design: true
@@ -38,7 +40,8 @@ flutter_launcher_icons:
   android: true
   ios: true
 
-  image_path: "assets/icon/app_icon.png"
+  image_path: "assets/icon/app_icon_square.png"
+  min_sdk_android: 24
 
   adaptive_icon_foreground: "assets/icon/app_icon_foreground.png"
   adaptive_icon_background: "#FFFFFF"

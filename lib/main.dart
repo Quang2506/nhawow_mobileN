@@ -9,6 +9,12 @@ import 'services/push_notification_service.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
+  try {
+    await PushNotificationService.instance.initializeLocalNotifications();
+  } catch (_) {
+    // App vẫn khởi động nếu local notification chưa thể khởi tạo.
+  }
+
   final firebaseOptions = FirebaseRuntimeOptions.currentPlatform;
   if (firebaseOptions != null) {
     try {

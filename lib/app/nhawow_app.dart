@@ -6,8 +6,10 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import '../core/app_theme.dart';
 import '../features/chat_thread_page.dart';
 import '../features/language_selection_page.dart';
+import '../features/membership_page.dart';
 import '../features/notifications_page.dart';
 import '../features/property_detail_page.dart';
+import '../features/wallet_page.dart';
 import '../features/main_shell.dart';
 import '../l10n/app_language.dart';
 import '../l10n/app_localizations.dart';
@@ -95,6 +97,26 @@ class _NhaWowAppState extends State<NhaWowApp> {
             MaterialPageRoute<void>(
               builder: (_) => PropertyDetailPage(propertyId: payload.propertyId),
             ),
+          );
+          return;
+        }
+
+        final type = payload.type.toLowerCase();
+        final url = payload.url.toLowerCase();
+        if (type.startsWith('wallet_') || url.contains('/wallet')) {
+          await _store.refreshWallet(force: true);
+          await _store.refreshNotifications(force: true);
+          await navigator.push<void>(
+            MaterialPageRoute<void>(builder: (_) => const WalletPage()),
+          );
+          return;
+        }
+
+        if (type.contains('membership') || url.contains('/membership')) {
+          await _store.refreshMembership(force: true);
+          await _store.refreshNotifications(force: true);
+          await navigator.push<void>(
+            MaterialPageRoute<void>(builder: (_) => const MembershipPage()),
           );
           return;
         }
