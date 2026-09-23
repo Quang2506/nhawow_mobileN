@@ -204,6 +204,37 @@ class NhaWowApiService {
     return AuthSessionModel.fromJson(_asMap(root['data']));
   }
 
+  Future<DateTime> scheduleAccountDeletion({required String language}) async {
+    final root = await _postEnvelope(
+      AppConfig.buildApiUri('/auth/delete-account', {'lang': language}),
+      const <String, dynamic>{},
+    );
+    final data = _asMap(root['data']);
+    final raw = (data['deleteAt'] ?? '').toString().trim();
+    final parsed = DateTime.tryParse(raw);
+    if (parsed == null) {
+      throw const ApiTransportException(
+        'Máy chủ không trả về thời gian xóa tài khoản hợp lệ.',
+      );
+    }
+    return parsed.toLocal();
+  }
+
+  Future<String> cancelAccountDeletion({required String language}) async {
+    final root = await _postEnvelope(
+      AppConfig.buildApiUri('/auth/cancel-account-deletion', {'lang': language}),
+      const <String, dynamic>{},
+    );
+    return (root['message'] ?? '').toString();
+  }
+
+  Future<void> finalizeAccountDeletion({required String language}) async {
+    await _postEnvelope(
+      AppConfig.buildApiUri('/auth/finalize-account-deletion', {'lang': language}),
+      const <String, dynamic>{},
+    );
+  }
+
   Future<void> logout({required String language}) async {
     if (_authToken.isNotEmpty) {
       await _postEnvelope(

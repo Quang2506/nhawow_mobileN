@@ -9,6 +9,7 @@ import '../core/widgets.dart';
 import '../l10n/app_localizations.dart';
 import 'agent_profile_page.dart';
 import 'change_password_page.dart';
+import 'delete_account_page.dart';
 import 'landlord_request_page.dart';
 import 'language_picker.dart';
 import 'login_page.dart';
@@ -487,6 +488,18 @@ class _LoggedInAccount extends StatelessWidget {
           subtitle: context.tr('Chính sách sử dụng nền tảng'),
           onTap: () => Navigator.of(context).push(
             MaterialPageRoute<void>(builder: (_) => const LegalInfoPage()),
+          ),
+        ),
+        _AccountMenuItem(
+          icon: Icons.delete_forever_outlined,
+          title: context.tr('Xóa tài khoản'),
+          subtitle: store.hasPendingAccountDeletion
+              ? context.tr('Đang chờ xóa tài khoản')
+              : context.tr('Xóa vĩnh viễn tài khoản và dữ liệu sau 1 giờ'),
+          onTap: () => Navigator.of(context).push(
+            MaterialPageRoute<void>(
+              builder: (_) => const DeleteAccountPage(),
+            ),
           ),
         ),
         const SizedBox(height: 14),

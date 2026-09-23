@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -76,6 +78,7 @@ class AppStore extends ChangeNotifier {
   String? _partnerPropertyError;
   bool _isLoadingConversations = false;
   String? _chatError;
+  Timer? _accountDeletionTimer;
 
   bool get isLoggedIn => _authToken.isNotEmpty && _authUser != null;
   bool get isAuthenticating => _isAuthenticating;
@@ -112,6 +115,18 @@ class AppStore extends ChangeNotifier {
   bool get isLoadingConversations => _isLoadingConversations;
   String? get chatError => _chatError;
   AgentModel get currentUser => _authUser?.toAgentModel() ?? agentLan;
+  DateTime? get accountDeletionAt => _authUser?.accountDeletionScheduledAt;
+
+  // Backwards compatibility for projects that still reference the old
+  // deactivate-account screen. These aliases now use the permanent account
+  // deletion flow; they do NOT merely disable the account.
+  @Deprecated('Use accountDeletionAt')
+  DateTime? get accountDeactivationAt => accountDeletionAt;
+
+  bool get hasPendingAccountDeletion {
+    final at = accountDeletionAt;
+    return at != null && at.isAfter(DateTime.now());
+  }
 
   List<PropertyModel> get properties => List.unmodifiable(_properties);
   List<PropertyModel> get favoriteProperties =>
@@ -164,6 +179,7 @@ class AppStore extends ChangeNotifier {
         try {
           _authUser = await _api.fetchCurrentUser(language: apiLanguageCode);
           _membershipCode = _authUser?.membershipCode ?? 'FREE';
+          _scheduleAccountDeletionTimer();
         } catch (_) {
           await _clearAuthState(preferences: preferences, notify: false);
         }
@@ -213,6 +229,7 @@ class AppStore extends ChangeNotifier {
         try {
           _authUser = await _api.fetchCurrentUser(language: apiLanguageCode);
           _membershipCode = _authUser?.membershipCode ?? 'FREE';
+          _scheduleAccountDeletionTimer();
           notifyListeners();
         } on ApiTransportException catch (error) {
           if (error.needLogin) await _clearAuthState();
@@ -1484,6 +1501,80 @@ class AppStore extends ChangeNotifier {
     }
   }
 
+  Future<DateTime> scheduleAccountDeletion() async {
+    if (!isLoggedIn) {
+      throw StateError('Bạn cần đăng nhập để xóa tài khoản.');
+    }
+    try {
+      final deleteAt = await _api.scheduleAccountDeletion(
+        language: apiLanguageCode,
+      );
+      _authUser = await _api.fetchCurrentUser(language: apiLanguageCode);
+      _membershipCode = _authUser?.membershipCode ?? 'FREE';
+      _scheduleAccountDeletionTimer(fallbackAt: deleteAt);
+      notifyListeners();
+      return accountDeletionAt ?? deleteAt;
+    } on ApiTransportException catch (error) {
+      if (error.needLogin) await _clearAuthState();
+      rethrow;
+    }
+  }
+
+  @Deprecated('Use scheduleAccountDeletion')
+  Future<DateTime> scheduleAccountDeactivation() => scheduleAccountDeletion();
+
+  @Deprecated('Use cancelAccountDeletion')
+  Future<String> cancelAccountDeactivation() => cancelAccountDeletion();
+
+  Future<String> cancelAccountDeletion() async {
+    if (!isLoggedIn) {
+      throw StateError('Bạn cần đăng nhập để hủy yêu cầu xóa tài khoản.');
+    }
+    try {
+      final message = await _api.cancelAccountDeletion(
+        language: apiLanguageCode,
+      );
+      _authUser = await _api.fetchCurrentUser(language: apiLanguageCode);
+      _membershipCode = _authUser?.membershipCode ?? 'FREE';
+      _scheduleAccountDeletionTimer();
+      notifyListeners();
+      return message;
+    } on ApiTransportException catch (error) {
+      if (error.needLogin) await _clearAuthState();
+      rethrow;
+    }
+  }
+
+  void _scheduleAccountDeletionTimer({DateTime? fallbackAt}) {
+    _accountDeletionTimer?.cancel();
+    _accountDeletionTimer = null;
+
+    final at = accountDeletionAt ?? fallbackAt;
+    if (at == null) return;
+
+    final delay = at.difference(DateTime.now());
+    if (delay <= Duration.zero) {
+      Future<void>(() async {
+        await _finalizeScheduledAccountDeletion();
+      });
+      return;
+    }
+
+    _accountDeletionTimer = Timer(delay, () async {
+      await _finalizeScheduledAccountDeletion();
+    });
+  }
+
+  Future<void> _finalizeScheduledAccountDeletion() async {
+    try {
+      await _api.finalizeAccountDeletion(language: apiLanguageCode);
+    } catch (_) {
+      // Backend có worker quét delete_at mỗi phút. Dù request cuối từ app lỗi
+      // hoặc app bị đóng, tài khoản vẫn sẽ được xóa ở server khi đến hạn.
+    }
+    await _clearAuthState();
+  }
+
   Future<String> submitLandlordRequest({
     required String guestName,
     required String guestPhone,
@@ -1588,6 +1679,7 @@ class AppStore extends ChangeNotifier {
         ? 'FREE'
         : session.user.membershipCode;
     _api.setAuthToken(_authToken);
+    _scheduleAccountDeletionTimer();
     try {
       final preferences = await SharedPreferences.getInstance();
       await preferences.setString(_authTokenPreferenceKey, _authToken);
@@ -1602,6 +1694,8 @@ class AppStore extends ChangeNotifier {
     SharedPreferences? preferences,
     bool notify = true,
   }) async {
+    _accountDeletionTimer?.cancel();
+    _accountDeletionTimer = null;
     PushNotificationService.instance.suspendSessionCallbacks();
     _authToken = '';
     _authUser = null;

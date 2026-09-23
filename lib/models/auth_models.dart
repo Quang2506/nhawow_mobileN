@@ -14,6 +14,7 @@ class AuthUserModel {
     required this.membershipCode,
     required this.emailVerified,
     required this.canManageListings,
+    this.accountDeletionScheduledAt,
   });
 
   final int id;
@@ -28,6 +29,14 @@ class AuthUserModel {
   final String membershipCode;
   final bool emailVerified;
   final bool canManageListings;
+  final DateTime? accountDeletionScheduledAt;
+
+  static DateTime? _parseDateTime(Object? value) {
+    final raw = value?.toString().trim() ?? '';
+    if (raw.isEmpty) return null;
+    final parsed = DateTime.tryParse(raw);
+    return parsed?.toLocal();
+  }
 
   factory AuthUserModel.fromJson(Map<String, dynamic> json) {
     int toInt(Object? value) {
@@ -54,6 +63,7 @@ class AuthUserModel {
       membershipCode: (json['membershipCode'] ?? 'FREE').toString().trim(),
       emailVerified: toBool(json['emailVerified']),
       canManageListings: toBool(json['canManageListings']),
+      accountDeletionScheduledAt: _parseDateTime(json['accountDeletionScheduledAt']),
     );
   }
 
